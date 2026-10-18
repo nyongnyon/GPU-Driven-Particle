@@ -189,6 +189,14 @@ namespace GameInput
     float GetAnalogInput( AnalogInput ai );
     float GetTimeCorrectedAnalogInput( AnalogInput ai );
 
+    // When the mouse is not captured, DirectInput releases it (cursor visible) and
+    // mouse buttons/axes read as zero. Defaults to captured.
+    void SetMouseCaptured( bool Captured );
+    bool IsMouseCaptured( void );
+
+    // While suppressed, all keys read as released (e.g. while ImGui has keyboard focus).
+    void SetKeyboardSuppressed( bool Suppressed );
+
 #if !WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_TV_TITLE | WINAPI_PARTITION_DESKTOP)
     void SetKeyState(Windows::System::VirtualKey key, bool IsDown);
 #endif

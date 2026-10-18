@@ -46,7 +46,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
-      <AdditionalIncludeDirectories>..\Core;..\Model;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Core;..\Model;..\ThirdParty\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <AdditionalOptions Condition="'$(Configuration)'=='Debug'">/nodefaultlib:MSVCRT %(AdditionalOptions)</AdditionalOptions>

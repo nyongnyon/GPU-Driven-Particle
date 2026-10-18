@@ -16,6 +16,7 @@
 #include "LightManager.h"
 #include "DebugDraw.h"
 #include "TexturedQuad.h"
+#include "ImGuiLayer.h"
 
 using namespace GameCore;
 using namespace Graphics;
@@ -38,7 +39,13 @@ public:
     virtual void Update( float deltaT ) override;
     virtual void RenderScene( void ) override;
 
+    virtual bool RequiresImGui() const override { return true; }
+
 private:
+    void UpdateImGui( float deltaT );
+
+    bool m_ShowImGuiDemo = false;
+
     Camera m_Camera;
     std::unique_ptr<CameraController> m_CameraController;
 
@@ -88,9 +95,24 @@ void MyProject::Update( float deltaT )
     DebugDraw::AddLine(Vector3(0.f, 0.f, 0.f), Vector3(0.f, 5.f, 0.f), Color(1.f, 1.f, 1.f));
     DebugDraw::AddLine(Vector3(-1.f, 0.f, 0.f), Vector3(1.f, 0.f, 0.f), Color(1.f, 1.f, 1.f));
 
+    UpdateImGui(deltaT);
 
 
 
+
+}
+
+void MyProject::UpdateImGui( float deltaT )
+{
+    ImGui::SetNextWindowPos(ImVec2(10.f, 10.f), ImGuiCond_FirstUseEver);
+    ImGui::Begin("Debug");
+    ImGui::Text("%.2f ms (%.1f FPS)", deltaT * 1000.f, deltaT > 0.f ? 1.f / deltaT : 0.f);
+    ImGui::Text("Mode: %s  [F1 to toggle]", ImGuiLayer::IsCameraMode() ? "Camera" : "UI");
+    ImGui::Checkbox("Show ImGui Demo", &m_ShowImGuiDemo);
+    ImGui::End();
+
+    if (m_ShowImGuiDemo)
+        ImGui::ShowDemoWindow(&m_ShowImGuiDemo);
 }
 
 void MyProject::RenderScene( void )

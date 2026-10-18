@@ -20,8 +20,11 @@
 #include "CommandContext.h"
 #include "PostEffects.h"
 #include "Display.h"
+#include "ImGuiLayer.h"
 #include "Util/CommandLineArg.h"
 #include <shellapi.h>
+
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 #pragma comment(lib, "runtimeobject.lib") 
 
@@ -30,6 +33,7 @@ namespace GameCore
     using namespace Graphics;
 
     bool gIsSupending = false;
+    bool s_UseImGui = false;
 
     void InitializeApplication( IGameApp& game )
     {
@@ -42,6 +46,10 @@ namespace GameCore
         GameInput::Initialize();
         EngineTuning::Initialize();
 
+        s_UseImGui = game.RequiresImGui();
+        if (s_UseImGui)
+            ImGuiLayer::Initialize();
+
         game.Startup();
     }
 
@@ -50,6 +58,9 @@ namespace GameCore
         g_CommandManager.IdleGPU();
 
         game.Cleanup();
+
+        if (s_UseImGui)
+            ImGuiLayer::Shutdown();
 
         GameInput::Shutdown();
     }
@@ -62,7 +73,10 @@ namespace GameCore
     
         GameInput::Update(DeltaTime);
         EngineTuning::Update(DeltaTime);
-        
+
+        if (s_UseImGui)
+            ImGuiLayer::NewFrame();
+
         game.Update(DeltaTime);
         game.RenderScene();
 
@@ -78,6 +92,10 @@ namespace GameCore
         UiContext.SetRenderTarget(g_OverlayBuffer.GetRTV());
         UiContext.SetViewportAndScissor(0, 0, g_OverlayBuffer.GetWidth(), g_OverlayBuffer.GetHeight());
         EngineTuning::Display( UiContext, 10.0f, 40.0f, 1900.0f, 1040.0f );
+
+        // Must be last: the ImGui backend sets its own root signature and PSO on the command list.
+        if (s_UseImGui)
+            ImGuiLayer::Render(UiContext);
 
         UiContext.Finish();
 
@@ -161,6 +179,9 @@ namespace GameCore
     //--------------------------------------------------------------------------------------
     LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
     {
+        if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam))
+            return true;
+
         switch( message )
         {
         case WM_SIZE:

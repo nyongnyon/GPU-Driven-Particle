@@ -50,6 +50,9 @@ namespace
     float s_Analogs[GameInput::kNumAnalogInputs];
     float s_AnalogsTC[GameInput::kNumAnalogInputs];
 
+    bool s_MouseCaptured = true;
+    bool s_KeyboardSuppressed = false;
+
 #ifdef USE_KEYBOARD_MOUSE
 
     IDirectInput8A* s_DI;
@@ -261,10 +264,19 @@ namespace
         }
         else
         {
-            s_Mouse->Acquire();
-            s_Mouse->GetDeviceState(sizeof(DIMOUSESTATE2), &s_MouseState);
+            if (s_MouseCaptured)
+            {
+                s_Mouse->Acquire();
+                s_Mouse->GetDeviceState(sizeof(DIMOUSESTATE2), &s_MouseState);
+            }
+            else
+            {
+                memset(&s_MouseState, 0, sizeof(DIMOUSESTATE2));
+            }
             s_Keyboard->Acquire();
             s_Keyboard->GetDeviceState(sizeof(s_Keybuffer), s_Keybuffer);
+            if (s_KeyboardSuppressed)
+                memset(s_Keybuffer, 0, sizeof(s_Keybuffer));
         }
     }
 
@@ -403,6 +415,26 @@ void GameInput::Update( float frameDelta )
         s_AnalogsTC[i] = s_Analogs[i] * frameDelta;
     }
 
+}
+
+void GameInput::SetMouseCaptured( bool Captured )
+{
+    s_MouseCaptured = Captured;
+#ifdef USE_KEYBOARD_MOUSE
+    // Exclusive mode hides the cursor; releasing it gives the cursor back to Windows.
+    if (!Captured && s_Mouse)
+        s_Mouse->Unacquire();
+#endif
+}
+
+bool GameInput::IsMouseCaptured( void )
+{
+    return s_MouseCaptured;
+}
+
+void GameInput::SetKeyboardSuppressed( bool Suppressed )
+{
+    s_KeyboardSuppressed = Suppressed;
 }
 
 bool GameInput::IsAnyPressed( void )

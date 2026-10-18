@@ -614,8 +614,51 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <Filter Include="ImGui">
+      <UniqueIdentifier>{3f7a1c52-9b1e-4d7a-8c3e-6a2b9f0d4e71}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Shaders">
       <UniqueIdentifier>{c5df3e3a-73f5-4b5b-8688-112163941bea}</UniqueIdentifier>
     </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\ThirdParty\imgui\imgui.h">
+      <Filter>ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ThirdParty\imgui\imconfig.h">
+      <Filter>ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ThirdParty\imgui\imgui_internal.h">
+      <Filter>ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ThirdParty\imgui\backends\imgui_impl_dx12.h">
+      <Filter>ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ThirdParty\imgui\backends\imgui_impl_win32.h">
+      <Filter>ImGui</Filter>
+    </ClInclude>
+    <ClCompile Include="..\ThirdParty\imgui\imgui.cpp">
+      <Filter>ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ThirdParty\imgui\imgui_demo.cpp">
+      <Filter>ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ThirdParty\imgui\imgui_draw.cpp">
+      <Filter>ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ThirdParty\imgui\imgui_tables.cpp">
+      <Filter>ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ThirdParty\imgui\imgui_widgets.cpp">
+      <Filter>ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ThirdParty\imgui\backends\imgui_impl_dx12.cpp">
+      <Filter>ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ThirdParty\imgui\backends\imgui_impl_win32.cpp">
+      <Filter>ImGui</Filter>
+    </ClCompile>
+    <ClInclude Include="ImGuiLayer.h" />
+    <ClCompile Include="ImGuiLayer.cpp" />
   </ItemGroup>
 </Project>

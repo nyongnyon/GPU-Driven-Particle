@@ -43,6 +43,10 @@ namespace GameCore
 
         // Override this in applications that use DirectX Raytracing to require a DXR-capable device.
         virtual bool RequiresRaytracingSupport() const { return false; }
+
+        // Override this to enable Dear ImGui.  ImGui:: calls are valid during Update() and RenderUI(),
+        // and are drawn on top of the UI overlay.  F1 toggles between UI mode and camera (mouse capture) mode.
+        virtual bool RequiresImGui() const { return false; }
     };
 }
 

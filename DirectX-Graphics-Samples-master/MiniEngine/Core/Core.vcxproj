@@ -59,6 +59,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <AdditionalIncludeDirectories>..\ThirdParty\imgui;..\ThirdParty\imgui\backends;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Platform)'=='x64'">
@@ -439,6 +440,43 @@
     <None Include="Shaders\PixelPacking.hlsli" />
     <None Include="Shaders\SSAORS.hlsli" />
     <None Include="Shaders\TextRS.hlsli" />
+  </ItemGroup>
+  <ItemGroup Label="ImGui">
+    <ClInclude Include="..\ThirdParty\imgui\imgui.h" />
+    <ClInclude Include="..\ThirdParty\imgui\imconfig.h" />
+    <ClInclude Include="..\ThirdParty\imgui\imgui_internal.h" />
+    <ClInclude Include="..\ThirdParty\imgui\backends\imgui_impl_dx12.h" />
+    <ClInclude Include="..\ThirdParty\imgui\backends\imgui_impl_win32.h" />
+    <ClCompile Include="..\ThirdParty\imgui\imgui.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="..\ThirdParty\imgui\imgui_demo.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="..\ThirdParty\imgui\imgui_draw.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="..\ThirdParty\imgui\imgui_tables.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="..\ThirdParty\imgui\imgui_widgets.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="..\ThirdParty\imgui\backends\imgui_impl_dx12.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="..\ThirdParty\imgui\backends\imgui_impl_win32.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+    </ClCompile>
+    <ClInclude Include="ImGuiLayer.h" />
+    <ClCompile Include="ImGuiLayer.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ItemDefinitionGroup>
