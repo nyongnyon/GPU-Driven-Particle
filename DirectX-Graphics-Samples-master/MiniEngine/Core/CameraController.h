@@ -52,6 +52,9 @@ public:
     void SlowMovement( bool enable ) { m_FineMovement = enable; }
     void SlowRotation( bool enable ) { m_FineRotation = enable; }
 
+    void SetMoveSpeed(float moveSpeed) { m_MoveSpeed = moveSpeed; }
+    void SetStrafeSpeed(float strafeSpeed) { m_StrafeSpeed = strafeSpeed; }
+
     void EnableMomentum( bool enable ) { m_Momentum = enable; }
 
     void SetHeadingPitchAndPosition(float heading, float pitch, const Vector3& position);

@@ -17,6 +17,8 @@
 #include "DebugDraw.h"
 #include "TexturedQuad.h"
 #include "ImGuiLayer.h"
+#include "ParticleSystem.h"
+
 
 using namespace GameCore;
 using namespace Graphics;
@@ -49,7 +51,7 @@ private:
     Camera m_Camera;
     std::unique_ptr<CameraController> m_CameraController;
 
-    TexturedQuad m_TempQuad;
+    ParticleSystem  m_Particles;
 };
 
 CREATE_APPLICATION( MyProject )
@@ -58,26 +60,31 @@ void MyProject::Startup( void )
 {
     // Rendering Setting
     //g_SceneColorBuffer.SetClearColor(Color(0.5f, 0.5f, 0.4f));
-    PostEffects::EnableAdaptation = true;
+    PostEffects::EnableAdaptation = false;
 
     Renderer::Initialize();
     DebugDraw::Initialize();
     QuadRenderer::Initialize();
+    ParticleSystem::InitializeShared();
 
     // Camera Setting
     m_Camera.SetZRange(0.1f, 1000.f);
-    m_CameraController.reset(new OrbitCamera(m_Camera, BoundingSphere(0.f, 0.f, 0.f, 10.f), Vector3(Math::kYUnitVector)));
+    m_Camera.SetEyeAtUp(Vector3(0.f, 5.f, -15.f), Vector3(0.f, 0.f, 0.f), Vector3(Math::kYUnitVector));
+    
+    auto NewCam = new FlyingFPSCamera(m_Camera, Vector3(Math::kYUnitVector));
+    NewCam->SetMoveSpeed(10.f);
+    NewCam->SetStrafeSpeed(10.f);
+    m_CameraController.reset(NewCam);
 
     // Setup your data
-    m_TempQuad.Load(L"Assets/Textures/image.png", false);
-    m_TempQuad.SetTint(Color(1.f, 1.f, 1.f));
-    m_TempQuad.SetTransform(Vector3(0.f, 2.f, 0.f), 0.f, 5.f);
+    m_Particles.Initialize(100000);
 }
 
 void MyProject::Cleanup( void )
 {
     // Free up resources in an orderly fashion
-    m_TempQuad.Release();
+    m_Particles.Shutdown();
+
     m_CameraController.reset();
     QuadRenderer::Shutdown();
     DebugDraw::Shutdown();
@@ -95,11 +102,11 @@ void MyProject::Update( float deltaT )
     DebugDraw::AddLine(Vector3(0.f, 0.f, 0.f), Vector3(0.f, 5.f, 0.f), Color(1.f, 1.f, 1.f));
     DebugDraw::AddLine(Vector3(-1.f, 0.f, 0.f), Vector3(1.f, 0.f, 0.f), Color(1.f, 1.f, 1.f));
 
+
+    m_Particles.Update(deltaT, Vector3(0.f, 1.f, 0.f));
+
+
     UpdateImGui(deltaT);
-
-
-
-
 }
 
 void MyProject::UpdateImGui( float deltaT )
@@ -125,15 +132,15 @@ void MyProject::RenderScene( void )
     gfxContext.ClearColor(g_SceneColorBuffer);
     gfxContext.ClearDepth(g_SceneDepthBuffer);
 
-    gfxContext.SetRenderTarget(g_SceneColorBuffer.GetRTV());
+    gfxContext.SetRenderTarget(g_SceneColorBuffer.GetRTV(), g_SceneDepthBuffer.GetDSV());
     gfxContext.SetViewportAndScissor(0, 0, g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight());
 
     // Rendering something
     DebugDraw::Render(gfxContext, m_Camera.GetViewProjMatrix());
     QuadRenderer::BeginDraw(gfxContext, m_Camera.GetViewProjMatrix());
-    m_TempQuad.Draw(gfxContext);
 
-
+    m_Particles.Render(gfxContext, m_Camera);
+   
 
     // Finish
     gfxContext.Finish();
