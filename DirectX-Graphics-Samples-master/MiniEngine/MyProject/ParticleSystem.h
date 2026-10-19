@@ -19,6 +19,16 @@ public:
 	void Update(float deltaT, const Math::Vector3& emitterPosition);
 	void Render(GraphicsContext& gfx, const Math::Camera& cam);
 
+	Particles::ParticleStat GetStat()
+	{
+		Particles::ParticleStat stat = {};
+		stat.maxParticles = m_MaxParticles;
+		stat.initVerified = m_initVerified;
+		stat.counters = m_LastCounters;
+
+		return stat;
+	}
+
 private:
 	void CreateBuffers();
 	bool VerifyInitialState();

@@ -118,6 +118,28 @@ void MyProject::UpdateImGui( float deltaT )
     ImGui::Checkbox("Show ImGui Demo", &m_ShowImGuiDemo);
     ImGui::End();
 
+    ImGui::Begin("Particle");
+
+    const Particles::ParticleStat stat = m_Particles.GetStat();
+
+    ImGui::Text("Alive : %u / %u", stat.counters.aliveCount, stat.maxParticles);
+    ImGui::Text("Dead  : %u", stat.counters.deadCount);
+    ImGui::Text("Emit  : %u", stat.counters.emitCount);
+
+    const bool ok = (stat.counters.aliveCount + stat.counters.deadCount == stat.maxParticles);
+    ImGui::TextColored(ok ? ImVec4(0.4f, 1.f, 0.4f, 1.f) : ImVec4(1.f, 0.3f, 0.3f, 1.f),
+        "alive + dead = %u %s", stat.counters.aliveCount + stat.counters.deadCount, ok ? "(OK)" : "(MISMATCH)");
+
+
+    static float history[240] = {};
+    static int   offset = 0;
+    history[offset] = float(stat.counters.aliveCount);
+    offset = (offset + 1) % IM_ARRAYSIZE(history);
+    ImGui::PlotLines("##alive", history, IM_ARRAYSIZE(history), offset,
+        "alive", 0.f, float(stat.maxParticles), ImVec2(0.f, 60.f));
+
+    ImGui::End();
+
     if (m_ShowImGuiDemo)
         ImGui::ShowDemoWindow(&m_ShowImGuiDemo);
 }

@@ -52,5 +52,20 @@ namespace Particles
 		SlotReuse = 0,
 		AliveDirect = 1,
 	};
+
+
+	// ----------------------
+	//		For DEBUG
+	// ----------------------
+	struct ParticleStat
+	{
+		CounterSnapshot counters = {};
+		uint32_t maxParticles = 0;
+		uint32_t emitRequested = 0;   // counters와 같은 프레임의 요청량
+		uint32_t sourceFrame = 0;   // 이 값이 몇 번째 프레임 결과인지
+		uint32_t currentFrame = 0;
+		bool     hasCounter = false;
+		bool     initVerified = false;
+	};
 }
 
