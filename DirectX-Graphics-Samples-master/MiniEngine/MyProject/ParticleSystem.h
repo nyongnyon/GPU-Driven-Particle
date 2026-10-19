@@ -22,8 +22,9 @@ public:
 private:
 	void CreateBuffers();
 	bool VerifyInitialState();
-	
+
 	uint32_t ComputeEmitCount(float deltaT);
+	void CollectCounterReadback();
 
 private:
 	static constexpr uint32_t sReadbackLatency = 3;
@@ -34,7 +35,7 @@ private:
 	// -----------------------
 	uint32_t			m_MaxParticles = 0;
 	Particles::Mode		m_Mode = Particles::Mode::SlotReuse;
-	
+
 	float				m_EmitCarry = 0.f;
 	uint32_t			m_FrameIndex = 0;
 	uint32_t			m_LastEmitRequest = 0;
@@ -50,9 +51,11 @@ private:
 	//		Readback buffer
 	// -----------------------
 	ReadbackBuffer		m_CounterReadback[sReadbackLatency];
-	uint64_t			m_ReadbackFence[sReadbackLatency];
+	uint64_t			m_ReadbackFence[sReadbackLatency] = {};
 	uint32_t			m_ReadbackSlot = 0;
 
+	Particles::CounterSnapshot		m_LastCounters = {};
+	bool				m_HasCounter = false;
 	bool				m_initVerified = false;
 
 };

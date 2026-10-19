@@ -113,7 +113,9 @@ void ParticleSystem::Shutdown()
 
 void ParticleSystem::Update(float deltaT, const Math::Vector3& emitterPosition)
 {
-	const float dt = 1.f / 60.f;
+	CollectCounterReadback();
+
+	const float dt = 1.f / 60.f; // TEMP
 	const uint32_t emitCount = ComputeEmitCount(dt);
 	m_LastEmitRequest = emitCount;
 
@@ -174,8 +176,12 @@ void ParticleSystem::Update(float deltaT, const Math::Vector3& emitterPosition)
 		ctx.Dispatch1D(m_MaxParticles, sThreadGroupSize);
 	}
 	
-	// 5) TEMP : Readback ¾øÀ½
-	ctx.Finish();
+	// 5) Readback
+	const uint32_t slot = m_ReadbackSlot;
+	ctx.TransitionResource(m_CounterBuffer, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	ctx.CopyBufferRegion(m_CounterReadback[m_ReadbackSlot], 0, m_CounterBuffer, 0, kCounterBufferSize);
+	m_ReadbackFence[slot] = ctx.Finish();
+	m_ReadbackSlot = (m_ReadbackSlot + 1) % sReadbackLatency;
 
 	++m_FrameIndex;
 }
@@ -260,4 +266,20 @@ uint32_t ParticleSystem::ComputeEmitCount(float deltaT) // TEMP
 	const uint32_t count = (uint32_t)want;
 	m_EmitCarry = want - float(count);
 	return min(count, m_MaxParticles);
+}
+
+void ParticleSystem::CollectCounterReadback()
+{
+	const uint32_t readbackSlot = m_ReadbackSlot;
+	const uint64_t readbackFence = m_ReadbackFence[readbackSlot];
+	if (readbackFence == 0)
+		return;
+
+	if (!g_CommandManager.IsFenceComplete(readbackFence))
+		g_CommandManager.WaitForFence(readbackFence);
+
+	std::memcpy(&m_LastCounters, m_CounterReadback[readbackSlot].Map(), sizeof(CounterSnapshot));
+	m_CounterReadback[readbackSlot].Unmap();
+	m_ReadbackFence[readbackSlot] = 0;
+	m_HasCounter = true;
 }
