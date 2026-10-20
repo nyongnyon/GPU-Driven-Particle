@@ -20,7 +20,7 @@ namespace Particles
 		kAliveCount = 0,
 		kDeadCount = 4,
 		kEmitCount = 8,
-		kReserved = 12,
+		kAliveAfterSim = 12,
 		kCounterBufferSize = 16
 	};
 
@@ -30,7 +30,7 @@ namespace Particles
 		uint32_t aliveCount;	// 현재 살아있는 파티클 수
 		uint32_t deadCount;		// 죽은 파티클 수
 		uint32_t emitCount;		// 
-		uint32_t reserved;
+		uint32_t aliveAfterSim;
 	};
 	
 	struct alignas(16) Simconstants
@@ -52,9 +52,10 @@ namespace Particles
 
 	enum class Mode : uint32_t
 	{
-		SlotReuse = 0,
-		SlotReuseFlags = 1,
-		AliveDirect = 2,
+		NONE = 0,
+		SlotReuse = 1,
+		SlotReuseFlags = 2,
+		AliveDirect = 3,
 	};
 
 
@@ -67,10 +68,7 @@ namespace Particles
 		Mode	mode = {};
 		uint32_t maxParticles = 0;
 		uint32_t emitRequested = 0;   // counters와 같은 프레임의 요청량
-		uint32_t sourceFrame = 0;   // 이 값이 몇 번째 프레임 결과인지
-		uint32_t currentFrame = 0;
 		bool     hasCounter = false;
-		bool     initVerified = false;
 	};
 }
 

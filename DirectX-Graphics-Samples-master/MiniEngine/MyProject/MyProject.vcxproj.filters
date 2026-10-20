@@ -12,6 +12,18 @@
     <Filter Include="Shaders">
       <UniqueIdentifier>{06dcf987-d5c3-489b-aa0a-88d547a323d5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Particle">
+      <UniqueIdentifier>{349dcf7c-c64c-472e-9ffa-e5fd8fb9d6ab}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Particle\ParticleSystem">
+      <UniqueIdentifier>{94a6638d-6130-4cc6-ad10-a38e830304f5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Particle\ParticlePool">
+      <UniqueIdentifier>{7e1b45fc-c8f0-4aa3-a0b9-da682562ec11}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Particle\Util">
+      <UniqueIdentifier>{1b3707cd-baee-4a82-8d36-174935338845}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -25,7 +37,16 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ParticleSystem.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Particle\ParticleSystem</Filter>
+    </ClCompile>
+    <ClCompile Include="IParticlePool.cpp">
+      <Filter>Particle\ParticlePool</Filter>
+    </ClCompile>
+    <ClCompile Include="SlotReusePool.cpp">
+      <Filter>Particle\ParticlePool</Filter>
+    </ClCompile>
+    <ClCompile Include="ParticleUtility.cpp">
+      <Filter>Particle\Util</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -36,11 +57,20 @@
     <ClInclude Include="TexturedQuad.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="ParticleSystem.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="ParticleTypes.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ParticleSystem.h">
+      <Filter>Particle\ParticleSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="IParticlePool.h">
+      <Filter>Particle\ParticlePool</Filter>
+    </ClInclude>
+    <ClInclude Include="SlotReusePool.h">
+      <Filter>Particle\ParticlePool</Filter>
+    </ClInclude>
+    <ClInclude Include="ParticleUtility.h">
+      <Filter>Particle\Util</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

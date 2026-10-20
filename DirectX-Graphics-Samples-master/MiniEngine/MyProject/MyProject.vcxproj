@@ -56,18 +56,24 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="DebugDraw.h" />
+    <ClInclude Include="IParticlePool.h" />
     <ClInclude Include="ParticleSystem.h" />
     <ClInclude Include="ParticleTypes.h" />
+    <ClInclude Include="ParticleUtility.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="SlotReusePool.h" />
     <ClInclude Include="TexturedQuad.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DebugDraw.cpp" />
+    <ClCompile Include="IParticlePool.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="ParticleSystem.cpp" />
+    <ClCompile Include="ParticleUtility.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="SlotReusePool.cpp" />
     <ClCompile Include="TexturedQuad.cpp" />
   </ItemGroup>
   <ItemGroup>

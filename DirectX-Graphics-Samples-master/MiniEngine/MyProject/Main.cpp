@@ -26,7 +26,6 @@ using namespace Graphics;
 class MyProject : public GameCore::IGameApp
 {
 public:
-
     MyProject()
     {
     }
@@ -65,7 +64,6 @@ void MyProject::Startup( void )
     Renderer::Initialize();
     DebugDraw::Initialize();
     QuadRenderer::Initialize();
-    ParticleSystem::InitializeShared();
 
     // Camera Setting
     m_Camera.SetZRange(0.1f, 1000.f);
@@ -77,7 +75,7 @@ void MyProject::Startup( void )
     m_CameraController.reset(NewCam);
 
     // Setup your data
-    m_Particles.Initialize(100000);
+    m_Particles.Initialize(Particles::Mode::SlotReuse , 100000);
 }
 
 void MyProject::Cleanup( void )
@@ -120,7 +118,7 @@ void MyProject::UpdateImGui( float deltaT )
 
     ImGui::Begin("Particle");
 
-    const Particles::ParticleStat stat = m_Particles.GetStat();
+    const Particles::ParticleStat stat = m_Particles.GetParticleStat();
 
     ImGui::Text("Alive : %u / %u", stat.counters.aliveCount, stat.maxParticles);
     ImGui::Text("Dead  : %u", stat.counters.deadCount);
@@ -140,8 +138,8 @@ void MyProject::UpdateImGui( float deltaT )
     ImGui::SeparatorText("Mode");
 
     int update = (int)stat.mode;
-    ImGui::RadioButton("SlotReuse", &update, 0); ImGui::SameLine();
-    ImGui::RadioButton("SlotReuseFlags", &update, 1);
+    ImGui::RadioButton("SlotReuse", &update, 1); ImGui::SameLine();
+    ImGui::RadioButton("SlotReuseFlags", &update, 2);
     if (update != (int)stat.mode)
         m_Particles.SetMode(Particles::Mode(update));
 

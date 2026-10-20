@@ -1,0 +1,31 @@
+#pragma once
+
+#include "VectorMath.h"
+#include "ParticleTypes.h"
+
+class GraphicsContext;
+namespace Math { class Camera; }
+
+class IParticlePool
+{
+public:
+	virtual void Initialize(uint32_t maxParticles = 0) = 0;
+	virtual void CreateBuffers(uint32_t maxParticles = 0) = 0;
+	virtual void Shutdown() = 0;
+
+	virtual void Update(float deltaT, const Math::Vector3& emitterPosition) = 0;
+	virtual void Render(GraphicsContext& gfx, const Math::Camera& cam) = 0;
+	
+	Particles::Mode		GetMode() const { return m_Mode; }
+	uint32_t			GetMaxParticles() const { return m_MaxParticles; }
+
+
+protected:
+	static constexpr uint32_t sReadbackLatency = 3;
+
+	uint32_t			m_MaxParticles = 0;
+	Particles::Mode		m_Mode = Particles::Mode::SlotReuse;
+
+	uint32_t			m_FrameIndex = 0;
+};
+
