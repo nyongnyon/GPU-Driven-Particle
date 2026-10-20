@@ -147,10 +147,18 @@ void AliveListPool::CreateBuffers(uint32_t maxParticles)
 
 void AliveListPool::Shutdown()
 {
+	for (uint32_t i = 0; i < sReadbackLatency; ++i)
+		m_CounterReadback[i].Destroy();
+	m_CounterBuffer.Destroy();
+	m_AliveListBuffer[0].Destroy();
+	m_AliveListBuffer[1].Destroy();
+	m_DeadListBuffer.Destroy();
+	m_ParticleBuffer.Destroy();
 }
 
 void AliveListPool::Update(float deltaT, const Math::Vector3& emitterPosition)
 {
+
 }
 
 void AliveListPool::Render(GraphicsContext& gfx, const Math::Camera& cam)
@@ -159,6 +167,27 @@ void AliveListPool::Render(GraphicsContext& gfx, const Math::Camera& cam)
 
 bool AliveListPool::VerifyInitialState()
 {
+	ReadbackBuffer verify;
+	verify.Create(L"Particle Init Verify", 6, 4);
 
-	return true;
+	// Begin Compute verify
+	ComputeContext& ctx = ComputeContext::Begin(L"Particle Init Verify");
+
+	ctx.TransitionResource(m_CounterBuffer, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	ctx.TransitionResource(m_DeadListBuffer, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+	const size_t lastOffset = size_t(m_MaxParticles - 1) * 4;
+	ctx.CopyBufferRegion(verify, 0, m_CounterBuffer, 0, kCounterBufferSize);
+	ctx.CopyBufferRegion(verify, 16, m_DeadListBuffer, lastOffset, 4); // -> 값이 0에 해당해야 함
+	ctx.CopyBufferRegion(verify, 20, m_DeadListBuffer, 0, 4); // -> 값이 Max-1에 해당해야 함
+	ctx.Finish(true);
+
+	const uint32_t* data = static_cast<const uint32_t*>(verify.Map());
+	bool isVerified = (data[0] == 0) && (data[1] == m_MaxParticles) && (data[2] == 0) && (data[4] == 0) && (data[5] == m_MaxParticles - 1);
+	Utility::Printf("[Particle] Init verify %s | MAX=%u alive=%u dead=%u deadTop=%u deadBottom=%u\n",
+		isVerified ? "OK" : "FAILED", m_MaxParticles, data[0], data[1], data[4], data[5]);
+	verify.Unmap();
+	verify.Destroy();
+
+	return isVerified;
 }
