@@ -130,7 +130,6 @@ void MyProject::UpdateImGui( float deltaT )
     ImGui::TextColored(ok ? ImVec4(0.4f, 1.f, 0.4f, 1.f) : ImVec4(1.f, 0.3f, 0.3f, 1.f),
         "alive + dead = %u %s", stat.counters.aliveCount + stat.counters.deadCount, ok ? "(OK)" : "(MISMATCH)");
 
-
     static float history[240] = {};
     static int   offset = 0;
     history[offset] = float(stat.counters.aliveCount);
@@ -138,7 +137,16 @@ void MyProject::UpdateImGui( float deltaT )
     ImGui::PlotLines("##alive", history, IM_ARRAYSIZE(history), offset,
         "alive", 0.f, float(stat.maxParticles), ImVec2(0.f, 60.f));
 
+    ImGui::SeparatorText("Mode");
+
+    int update = (int)stat.mode;
+    ImGui::RadioButton("SlotReuse", &update, 0); ImGui::SameLine();
+    ImGui::RadioButton("SlotReuseFlags", &update, 1);
+    if (update != (int)stat.mode)
+        m_Particles.SetMode(Particles::Mode(update));
+
     ImGui::End();
+
 
     if (m_ShowImGuiDemo)
         ImGui::ShowDemoWindow(&m_ShowImGuiDemo);

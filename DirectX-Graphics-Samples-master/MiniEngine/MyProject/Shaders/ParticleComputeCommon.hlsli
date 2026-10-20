@@ -22,5 +22,6 @@ cbuffer SimConstants : register(b0)
 RWStructuredBuffer<Particle>    Particles : register(u0);
 RWStructuredBuffer<uint>        DeadList : register(u1);
 RWByteAddressBuffer             Counters : register(u2);
+RWStructuredBuffer<uint>        AliveFlags : register(u3); // For SlotReuseFlags ver / 1 = alive, 0 = dead
 
 #endif

@@ -13,7 +13,9 @@
 
 #include "CompiledShaders/ParticleEmitCS.h"
 #include "CompiledShaders/ParticleSimulateCS.h"
+#include "CompiledShaders/ParticleSimulateFlagsCS.h"
 #include "CompiledShaders/ParticleDrawVS.h"
+#include "CompiledShaders/ParticleDrawFlagsVS.h"
 #include "CompiledShaders/ParticleDrawPS.h"
 
 #include <vector>
@@ -32,7 +34,10 @@ namespace
 	RootSignature	s_DrawSig;
 	ComputePSO		s_EmitPSO(L"Particle Emit PSO");
 	ComputePSO		s_SimulatePSO(L"Particle Simulate PSO");
+	ComputePSO		s_SimulateFlagsPSO(L"Particle Simulate Flags PSO");
+
 	GraphicsPSO		s_DrawPSO(L"Particle Draw PSO");
+	GraphicsPSO		s_DrawFlagsPSO(L"Particle Draw Flags PSO");
 
 	uint32_t HashU32(uint32_t x)
 	{
@@ -62,13 +67,13 @@ void ParticleSystem::InitializeShared()
 	// 1) Compute Root Sig
 	s_ComputeSig.Reset(kNumComputeRootParams, 0);
 	s_ComputeSig[kComputeCBVs].InitAsConstantBuffer(0);
-	s_ComputeSig[kComputeUAVs].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 3);
+	s_ComputeSig[kComputeUAVs].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 4);
 	s_ComputeSig.Finalize(L"Particle Compute RootSig");
 
 	// 2) Draw Root Sig
 	s_DrawSig.Reset(kNumDrawRootParams, 0); // TEMP
 	s_DrawSig[kDrawCBVs].InitAsConstantBuffer(0, D3D12_SHADER_VISIBILITY_VERTEX);
-	s_DrawSig[kDrawSRVs].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1, D3D12_SHADER_VISIBILITY_VERTEX);
+	s_DrawSig[kDrawSRVs].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 2, D3D12_SHADER_VISIBILITY_VERTEX);
 	s_DrawSig.Finalize(L"Particle Draw RootSig");
 
 	// ----------------------
@@ -83,15 +88,25 @@ void ParticleSystem::InitializeShared()
 	s_SimulatePSO.SetComputeShader(g_pParticleSimulateCS, sizeof(g_pParticleSimulateCS));
 	s_SimulatePSO.Finalize();
 
-	s_DrawPSO.SetRootSignature(s_DrawSig);
-	s_DrawPSO.SetRasterizerState(RasterizerTwoSided);
-	s_DrawPSO.SetBlendState(BlendAdditive);
-	s_DrawPSO.SetDepthStencilState(DepthStateDisabled);
-	s_DrawPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
-	s_DrawPSO.SetRenderTargetFormat(g_SceneColorBuffer.GetFormat(), DXGI_FORMAT_UNKNOWN);
-	s_DrawPSO.SetVertexShader(g_pParticleDrawVS, sizeof(g_pParticleDrawVS));
-	s_DrawPSO.SetPixelShader(g_pParticleDrawPS, sizeof(g_pParticleDrawPS));
-	s_DrawPSO.Finalize();
+	s_SimulateFlagsPSO.SetRootSignature(s_ComputeSig);
+	s_SimulateFlagsPSO.SetComputeShader(g_pParticleSimulateFlagsCS, sizeof(g_pParticleSimulateFlagsCS));
+	s_SimulateFlagsPSO.Finalize();
+
+	auto setupDrawPSO = [](GraphicsPSO& pso, const void* vs, size_t vsSize)
+		{
+			pso.SetRootSignature(s_DrawSig);
+			pso.SetRasterizerState(RasterizerTwoSided);
+			pso.SetBlendState(BlendAdditive);
+			pso.SetDepthStencilState(DepthStateDisabled);
+			pso.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+			pso.SetRenderTargetFormat(g_SceneColorBuffer.GetFormat(), DXGI_FORMAT_UNKNOWN);
+			pso.SetVertexShader(vs, vsSize);
+			pso.SetPixelShader(g_pParticleDrawPS, sizeof(g_pParticleDrawPS));
+			pso.Finalize();
+		};
+
+	setupDrawPSO(s_DrawPSO, g_pParticleDrawVS, sizeof(g_pParticleDrawVS));
+	setupDrawPSO(s_DrawFlagsPSO, g_pParticleDrawFlagsVS, sizeof(g_pParticleDrawFlagsVS));
 }
 
 void ParticleSystem::Initialize(uint32_t maxParticles)
@@ -106,9 +121,9 @@ void ParticleSystem::Shutdown()
 	for (uint32_t i = 0; i < sReadbackLatency; ++i)
 		m_CounterReadback[i].Destroy();
 	m_CounterBuffer.Destroy();
+	m_AliveFlagBuffer.Destroy();
 	m_DeadListBuffer.Destroy();
 	m_ParticleBuffer.Destroy();
-
 }
 
 void ParticleSystem::Update(float deltaT, const Math::Vector3& emitterPosition)
@@ -145,15 +160,16 @@ void ParticleSystem::Update(float deltaT, const Math::Vector3& emitterPosition)
 	// 1) Buffers -> UAV
 	ctx.TransitionResource(m_ParticleBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	ctx.TransitionResource(m_DeadListBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	ctx.TransitionResource(m_AliveFlagBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	ctx.TransitionResource(m_CounterBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
 	// 2) Bind
 	ctx.SetRootSignature(s_ComputeSig);
 	ctx.SetDynamicConstantBufferView(kComputeCBVs, sizeof(sc), &sc);
 	
-	const D3D12_CPU_DESCRIPTOR_HANDLE uavs[3]
-		= { m_ParticleBuffer.GetUAV(), m_DeadListBuffer.GetUAV(), m_CounterBuffer.GetUAV() };
-	ctx.SetDynamicDescriptors(kComputeUAVs, 0, 3, uavs);
+	const D3D12_CPU_DESCRIPTOR_HANDLE uavs[4]
+		= { m_ParticleBuffer.GetUAV(), m_DeadListBuffer.GetUAV(), m_CounterBuffer.GetUAV(), m_AliveFlagBuffer.GetUAV()};
+	ctx.SetDynamicDescriptors(kComputeUAVs, 0, 4, uavs);
 	
 	// 3) Emit
 	{
@@ -167,12 +183,14 @@ void ParticleSystem::Update(float deltaT, const Math::Vector3& emitterPosition)
 
 	ctx.InsertUAVBarrier(m_ParticleBuffer);
 	ctx.InsertUAVBarrier(m_DeadListBuffer);
+	ctx.InsertUAVBarrier(m_AliveFlagBuffer);
 	ctx.InsertUAVBarrier(m_CounterBuffer, true);
 
 	// 4) Simulate
 	{
-		ScopedTimer _t(L"Particle Simulate", ctx);
-		ctx.SetPipelineState(s_SimulatePSO);
+		const bool useFlagArray = (m_Mode == Mode::SlotReuseFlags);
+		ScopedTimer _t(useFlagArray ? L"Particle Simulate" : L"Particle Simulate Flags", ctx);
+		ctx.SetPipelineState(useFlagArray ? s_SimulateFlagsPSO : s_SimulatePSO);
 		ctx.Dispatch1D(m_MaxParticles, sThreadGroupSize);
 	}
 	
@@ -189,6 +207,8 @@ void ParticleSystem::Update(float deltaT, const Math::Vector3& emitterPosition)
 void ParticleSystem::Render(GraphicsContext& gfx, const Math::Camera& cam)
 {
 	gfx.TransitionResource(m_ParticleBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	gfx.TransitionResource(m_AliveFlagBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	const bool useFlagArray = (m_Mode == Mode::SlotReuseFlags);
 
 	DrawConstants dc = {};
 	XMStoreFloat4x4(&dc.viewProj, cam.GetViewProjMatrix());
@@ -198,13 +218,21 @@ void ParticleSystem::Render(GraphicsContext& gfx, const Math::Camera& cam)
 	dc.camUp.w = 0.f;
 
 	gfx.SetRootSignature(s_DrawSig);
-	gfx.SetPipelineState(s_DrawPSO);
+	gfx.SetPipelineState(useFlagArray ? s_DrawFlagsPSO : s_DrawPSO);
 	gfx.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	gfx.SetDynamicConstantBufferView(kDrawCBVs, sizeof(dc), &dc);
-	gfx.SetDynamicDescriptor(kDrawSRVs, 0, m_ParticleBuffer.GetSRV());
+
+	const D3D12_CPU_DESCRIPTOR_HANDLE srvs[2] = { m_ParticleBuffer.GetSRV(), m_AliveFlagBuffer.GetSRV() };
+	gfx.SetDynamicDescriptors(kDrawSRVs, 0, 2, srvs);
 
 	ScopedTimer _t(L"Particle Draw", gfx);
 	gfx.DrawInstanced(6, m_MaxParticles);
+}
+
+void ParticleSystem::SetMode(Particles::Mode mode)
+{
+	// TEMP : Slot Reuse 방식에서는 단순 mode 변경만 해도 문제없다.
+	m_Mode = mode;
 }
 
 void ParticleSystem::CreateBuffers()
@@ -218,6 +246,9 @@ void ParticleSystem::CreateBuffers()
 	for (uint32_t i = 0; i < m_MaxParticles; ++i)
 		zeroDeadList[i] = m_MaxParticles - 1 - i;
 	m_DeadListBuffer.Create(L"Particle DeadList", m_MaxParticles, sizeof(uint32_t), zeroDeadList.data());
+
+	std::vector<uint32_t> zeroFlags(m_MaxParticles, 0u);
+	m_AliveFlagBuffer.Create(L"Particle AliveFlags", m_MaxParticles, sizeof(uint32_t), zeroFlags.data());
 	
 	// Counter Buffer
 	CounterSnapshot initSnapshot{}; // deadCount = paritcle count / 나머지 = 0

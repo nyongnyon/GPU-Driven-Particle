@@ -10,7 +10,9 @@ namespace Particles
 		DirectX::XMFLOAT3 velocity; float maxlife;
 		uint32_t		  color;	float size;
 		uint32_t		  flags;	uint32_t pad;
-	};
+	};	
+	static_assert(sizeof(Particle) == 48, "HLSL Particle stride(48 B)와 일치해야 함");
+
 	
 	// CounterBuffer에서 각 값들의 바이트 위치
 	enum CounterOffset : uint32_t
@@ -23,7 +25,7 @@ namespace Particles
 	};
 
 	// CounterBuffer에 사용될 값
-	struct CounterSnapshot
+	struct alignas(16) CounterSnapshot
 	{
 		uint32_t aliveCount;	// 현재 살아있는 파티클 수
 		uint32_t deadCount;		// 죽은 파티클 수
@@ -38,6 +40,7 @@ namespace Particles
 		float minLife; float maxLife; float minSpeed; float maxSpeed;
 		float particleSize; uint32_t maxParticles; uint32_t randomSeed; uint32_t baseColor;
 	};
+	static_assert(sizeof(Simconstants) == 64, "HLSL cbuffer SimConstants(64 B)와 일치해야 함");
 
 	// 파티클 렌더링에 필요한 Constant Buffer
 	struct alignas(16) DrawConstants
@@ -50,7 +53,8 @@ namespace Particles
 	enum class Mode : uint32_t
 	{
 		SlotReuse = 0,
-		AliveDirect = 1,
+		SlotReuseFlags = 1,
+		AliveDirect = 2,
 	};
 
 
@@ -60,6 +64,7 @@ namespace Particles
 	struct ParticleStat
 	{
 		CounterSnapshot counters = {};
+		Mode	mode = {};
 		uint32_t maxParticles = 0;
 		uint32_t emitRequested = 0;   // counters와 같은 프레임의 요청량
 		uint32_t sourceFrame = 0;   // 이 값이 몇 번째 프레임 결과인지

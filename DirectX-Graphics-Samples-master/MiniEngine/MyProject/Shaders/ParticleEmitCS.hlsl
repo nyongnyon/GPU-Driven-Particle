@@ -3,7 +3,7 @@
 [numthreads(PARTICLE_GROUP_SIZE, 1, 1)]
 void main( uint3 DTid : SV_DispatchThreadID )
 {
-    if (DTid.x > EmitCount)
+    if (DTid.x >= EmitCount)
         return;
     
     uint prevDead;
@@ -29,6 +29,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
     p.flags = PARTICLE_FLAG_ALIVE;
     p.pad = 0;
     Particles[slot] = p;
+    AliveFlags[slot] = 1; // alive flag를 사용하지 않더라도 일단 남긴다..
     
     uint prevAlive, prevEmit;
     Counters.InterlockedAdd(COUNTER_ALIVE, 1, prevAlive);

@@ -71,6 +71,12 @@
     <None Include="Shaders\ParticleComputeCommon.hlsli">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="Shaders\ParticleDrawCommon.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\ParticleSimulateCommon.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\DebugLineVS.hlsl">
@@ -95,6 +101,12 @@
       <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ParticleDrawPS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleDrawFlagsVS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleSimulateFlagsCS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>

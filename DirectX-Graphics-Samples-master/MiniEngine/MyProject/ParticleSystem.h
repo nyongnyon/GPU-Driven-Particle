@@ -19,9 +19,12 @@ public:
 	void Update(float deltaT, const Math::Vector3& emitterPosition);
 	void Render(GraphicsContext& gfx, const Math::Camera& cam);
 
+	void SetMode(Particles::Mode mode);
+
 	Particles::ParticleStat GetStat()
 	{
 		Particles::ParticleStat stat = {};
+		stat.mode = m_Mode;
 		stat.maxParticles = m_MaxParticles;
 		stat.initVerified = m_initVerified;
 		stat.counters = m_LastCounters;
@@ -31,7 +34,7 @@ public:
 
 private:
 	void CreateBuffers();
-	bool VerifyInitialState();
+	bool VerifyInitialState(); // Initialize시에 Buffer 설정이 정확한지 확인하는 함수
 
 	uint32_t ComputeEmitCount(float deltaT);
 	void CollectCounterReadback();
@@ -56,6 +59,7 @@ private:
 	StructuredBuffer	m_ParticleBuffer;
 	StructuredBuffer	m_DeadListBuffer;
 	ByteAddressBuffer	m_CounterBuffer;
+	StructuredBuffer	m_AliveFlagBuffer;
 
 	// -----------------------
 	//		Readback buffer
