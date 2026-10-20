@@ -24,6 +24,9 @@
     <Filter Include="Particle\Util">
       <UniqueIdentifier>{1b3707cd-baee-4a82-8d36-174935338845}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shaders\Particle">
+      <UniqueIdentifier>{71bedd0b-2814-4ac7-991f-2796dae0930c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -39,7 +42,7 @@
     <ClCompile Include="ParticleSystem.cpp">
       <Filter>Particle\ParticleSystem</Filter>
     </ClCompile>
-    <ClCompile Include="IParticlePool.cpp">
+    <ClCompile Include="ParticlePool.cpp">
       <Filter>Particle\ParticlePool</Filter>
     </ClCompile>
     <ClCompile Include="SlotReusePool.cpp">
@@ -47,6 +50,9 @@
     </ClCompile>
     <ClCompile Include="ParticleUtility.cpp">
       <Filter>Particle\Util</Filter>
+    </ClCompile>
+    <ClCompile Include="AliveListPool.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -63,7 +69,7 @@
     <ClInclude Include="ParticleSystem.h">
       <Filter>Particle\ParticleSystem</Filter>
     </ClInclude>
-    <ClInclude Include="IParticlePool.h">
+    <ClInclude Include="ParticlePool.h">
       <Filter>Particle\ParticlePool</Filter>
     </ClInclude>
     <ClInclude Include="SlotReusePool.h">
@@ -72,6 +78,7 @@
     <ClInclude Include="ParticleUtility.h">
       <Filter>Particle\Util</Filter>
     </ClInclude>
+    <ClInclude Include="AliveListPool.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Logo.png">
@@ -95,17 +102,20 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-    <None Include="Shaders\ParticleCommon.hlsli">
-      <Filter>Shaders</Filter>
+    <None Include="Shaders\ParticleSimulateCommon.hlsli">
+      <Filter>Shaders\Particle</Filter>
+    </None>
+    <None Include="Shaders\ParticleDrawReuseCommon.hlsli">
+      <Filter>Shaders\Particle</Filter>
     </None>
     <None Include="Shaders\ParticleComputeCommon.hlsli">
-      <Filter>Shaders</Filter>
+      <Filter>Shaders\Particle</Filter>
+    </None>
+    <None Include="Shaders\ParticleCommon.hlsli">
+      <Filter>Shaders\Particle</Filter>
     </None>
     <None Include="Shaders\ParticleDrawCommon.hlsli">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="Shaders\ParticleSimulateCommon.hlsli">
-      <Filter>Shaders</Filter>
+      <Filter>Shaders\Particle</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
@@ -121,23 +131,35 @@
     <FxCompile Include="Shaders\TexturedQuadPS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\ParticleEmitCS.hlsl">
-      <Filter>Shaders</Filter>
+    <FxCompile Include="Shaders\ParticleEmitReuseCS.hlsl">
+      <Filter>Shaders\Particle</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ParticleSimulateCS.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleDrawVS.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleDrawPS.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleDrawFlagsVS.hlsl">
-      <Filter>Shaders</Filter>
+      <Filter>Shaders\Particle</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ParticleSimulateFlagsCS.hlsl">
-      <Filter>Shaders</Filter>
+      <Filter>Shaders\Particle</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleDrawReuseVS.hlsl">
+      <Filter>Shaders\Particle</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleDrawPS.hlsl">
+      <Filter>Shaders\Particle</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleDrawReuseFlagsVS.hlsl">
+      <Filter>Shaders\Particle</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleEmitAliveCS.hlsl">
+      <Filter>Shaders\Particle</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleSimulateAliveCS.hlsl">
+      <Filter>Shaders\Particle</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleAfterSimAliveCS.hlsl">
+      <Filter>Shaders\Particle</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleDrawAliveVS.hlsl">
+      <Filter>Shaders\Particle</Filter>
     </FxCompile>
   </ItemGroup>
 </Project>

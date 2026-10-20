@@ -6,8 +6,11 @@
 class GraphicsContext;
 namespace Math { class Camera; }
 
-class IParticlePool
+class ParticlePool
 {
+public:
+	ParticlePool(Particles::Mode mode) : m_Mode(mode) {}
+
 public:
 	virtual void Initialize(uint32_t maxParticles = 0) = 0;
 	virtual void CreateBuffers(uint32_t maxParticles = 0) = 0;

@@ -4,7 +4,7 @@
 #include "ReadbackBuffer.h"
 #include "VectorMath.h"
 #include "ParticleTypes.h"
-#include "IParticlePool.h"
+#include "ParticlePool.h"
 
 class GraphicsContext;
 namespace Math { class Camera; }
@@ -26,6 +26,6 @@ private:
 	// -----------------------
 	//		Particle Setting
 	// -----------------------
-	std::unique_ptr<IParticlePool> m_ParticlePool;
+	std::unique_ptr<ParticlePool> m_ParticlePool;
 };
 

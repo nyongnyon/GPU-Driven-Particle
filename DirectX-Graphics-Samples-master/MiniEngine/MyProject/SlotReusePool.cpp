@@ -11,11 +11,11 @@
 
 #include "ParticleUtility.h"
 
-#include "CompiledShaders/ParticleEmitCS.h"
+#include "CompiledShaders/ParticleEmitReuseCS.h"
 #include "CompiledShaders/ParticleSimulateCS.h"
 #include "CompiledShaders/ParticleSimulateFlagsCS.h"
-#include "CompiledShaders/ParticleDrawVS.h"
-#include "CompiledShaders/ParticleDrawFlagsVS.h"
+#include "CompiledShaders/ParticleDrawReuseVS.h"
+#include "CompiledShaders/ParticleDrawReuseFlagsVS.h"
 #include "CompiledShaders/ParticleDrawPS.h"
 
 #include <vector>
@@ -33,12 +33,12 @@ namespace
 	bool			s_Initialized = false;
 	RootSignature	s_ComputeSig;
 	RootSignature	s_DrawSig;
-	ComputePSO		s_EmitPSO(L"Particle Emit PSO");
-	ComputePSO		s_SimulatePSO(L"Particle Simulate PSO");
-	ComputePSO		s_SimulateFlagsPSO(L"Particle Simulate Flags PSO");
+	ComputePSO		s_EmitPSO(L"Particle Slot Reuse Emit PSO");
+	ComputePSO		s_SimulatePSO(L"Particle Slot Reuse Simulate PSO");
+	ComputePSO		s_SimulateFlagsPSO(L"Particle Slot Reuse Flags Simulate PSO");
 
-	GraphicsPSO		s_DrawPSO(L"Particle Draw PSO");
-	GraphicsPSO		s_DrawFlagsPSO(L"Particle Draw Flags PSO");
+	GraphicsPSO		s_DrawPSO(L"Particle Slot Reuse Draw PSO");
+	GraphicsPSO		s_DrawFlagsPSO(L"Particle Slot Reuse Flags Draw PSO");
 
 	uint32_t HashU32(uint32_t x)
 	{
@@ -65,20 +65,20 @@ namespace
 		s_ComputeSig.Reset(kNumComputeRootParams, 0);
 		s_ComputeSig[kComputeCBVs].InitAsConstantBuffer(0);
 		s_ComputeSig[kComputeUAVs].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 4);
-		s_ComputeSig.Finalize(L"Particle Compute RootSig");
+		s_ComputeSig.Finalize(L"Particle Slot Reuse Compute RootSig");
 
 		// 2) Draw Root Sig
-		s_DrawSig.Reset(kNumDrawRootParams, 0); // TEMP
+		s_DrawSig.Reset(kNumDrawRootParams, 0);
 		s_DrawSig[kDrawCBVs].InitAsConstantBuffer(0, D3D12_SHADER_VISIBILITY_VERTEX);
 		s_DrawSig[kDrawSRVs].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 2, D3D12_SHADER_VISIBILITY_VERTEX);
-		s_DrawSig.Finalize(L"Particle Draw RootSig");
+		s_DrawSig.Finalize(L"Particle Slot Reuse Draw RootSig");
 
 		// ----------------------
 		//			PSO
 		// ----------------------
 
 		s_EmitPSO.SetRootSignature(s_ComputeSig);
-		s_EmitPSO.SetComputeShader(g_pParticleEmitCS, sizeof(g_pParticleEmitCS));
+		s_EmitPSO.SetComputeShader(g_pParticleEmitReuseCS, sizeof(g_pParticleEmitReuseCS));
 		s_EmitPSO.Finalize();
 
 		s_SimulatePSO.SetRootSignature(s_ComputeSig);
@@ -102,12 +102,12 @@ namespace
 				pso.Finalize();
 			};
 
-		setupDrawPSO(s_DrawPSO, g_pParticleDrawVS, sizeof(g_pParticleDrawVS));
-		setupDrawPSO(s_DrawFlagsPSO, g_pParticleDrawFlagsVS, sizeof(g_pParticleDrawFlagsVS));
-		
+		setupDrawPSO(s_DrawPSO, g_pParticleDrawReuseVS, sizeof(g_pParticleDrawReuseVS));
+		setupDrawPSO(s_DrawFlagsPSO, g_pParticleDrawReuseFlagsVS, sizeof(g_pParticleDrawReuseFlagsVS));
+
 		s_Initialized = true;
 	}
-}
+};
 
 void SlotReusePool::Initialize(uint32_t maxParticles)
 {

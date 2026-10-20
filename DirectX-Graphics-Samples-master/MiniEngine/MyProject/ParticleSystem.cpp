@@ -12,7 +12,7 @@
 #include "Camera.h"
 
 #include "ParticleUtility.h"
-#include "IParticlePool.h"
+#include "ParticlePool.h"
 #include "SlotReusePool.h"
 
 #include <algorithm>

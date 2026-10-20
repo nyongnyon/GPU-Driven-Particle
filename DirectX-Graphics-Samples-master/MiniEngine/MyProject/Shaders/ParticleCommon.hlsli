@@ -14,6 +14,7 @@ struct Particle
 #define COUNTER_ALIVE 0
 #define COUNTER_DEAD 4
 #define COUNTER_EMIT 8
+#define COUNTER_ALIVE_AFTER_SIM 12
 
 #define PARTICLE_FLAG_ALIVE 0x1u
 #define PARTICLE_GROUP_SIZE 64
@@ -24,7 +25,7 @@ float4 UnpackColor(uint c)
     return float4(c & 0xFF, (c >> 8) & 0xFF, (c >> 16) & 0xFF, (c >> 24) & 0xFF) / 255.0f;
 }
 
-// random hash
+// hash
 uint PcgHash(uint v)
 {
     uint state = v * 747796405u + 2891336453u;

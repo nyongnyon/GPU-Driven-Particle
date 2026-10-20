@@ -1,21 +1,21 @@
 #pragma once
-#include "IParticlePool.h"
+#include "ParticlePool.h"
 
 #include "GpuBuffer.h"
 #include "ReadbackBuffer.h"
 
-class SlotReusePool : public IParticlePool
+class SlotReusePool : public ParticlePool
 {
 public:
-	SlotReusePool(Particles::Mode mode) { m_Mode = mode; }
+	SlotReusePool(Particles::Mode mode) : ParticlePool(mode) {  }
 
 public:
-	virtual void Initialize(uint32_t maxParticles) override;
-	virtual void CreateBuffers(uint32_t maxParticles) override;
-	virtual void Shutdown() override;
+	void Initialize(uint32_t maxParticles) override;
+	void CreateBuffers(uint32_t maxParticles) override;
+	void Shutdown() override;
 
-	virtual void Update(float deltaT, const Math::Vector3& emitterPosition) override;
-	virtual void Render(GraphicsContext& gfx, const Math::Camera& cam) override;
+	void Update(float deltaT, const Math::Vector3& emitterPosition) override;
+	void Render(GraphicsContext& gfx, const Math::Camera& cam) override;
 
 	Particles::CounterSnapshot GetCounterSnapshot() const { return m_LastCounters; }
 	

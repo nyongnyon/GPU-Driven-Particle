@@ -7,11 +7,11 @@ void main( uint3 DTid : SV_DispatchThreadID )
         return;
     
     uint prevDead;
-    Counters.InterlockedAdd(COUNTER_DEAD, 0xFFFFFFFF, prevDead);
-    if (prevDead == 0 || prevDead > MaxParticles)
+    Counters.InterlockedAdd(COUNTER_DEAD, 0xFFFFFFFF, prevDead); // 1 감소
+    if (prevDead == 0 || prevDead > MaxParticles) // 파티클 풀의 범위를 넘어선 경우,
     {
         uint restored;
-        Counters.InterlockedAdd(COUNTER_DEAD, 1, restored);
+        Counters.InterlockedAdd(COUNTER_DEAD, 1, restored); 
         return;
     }
     

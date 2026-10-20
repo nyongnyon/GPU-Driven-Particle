@@ -23,7 +23,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
     p.life -= DeltaTime;
     
     // ¼ö¸í ³¡
-    if (p.life <= 0.0)
+    if (p.life <= 0.0f)
     {
         Particles[i].flags = 0;
         AliveFlags[i] = 0;
