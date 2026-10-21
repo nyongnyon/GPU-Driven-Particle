@@ -155,7 +155,7 @@ void SlotReusePool::Shutdown()
 
 void SlotReusePool::Update(float deltaT, const EmitRequest& emitRequest)
 {
-#ifdef _DEBUG
+#ifndef RELEASE
 	CollectCounterReadback();
 #endif
 
@@ -218,7 +218,7 @@ void SlotReusePool::Update(float deltaT, const EmitRequest& emitRequest)
 		ctx.Dispatch1D(m_MaxParticles, sThreadGroupSize);
 	}
 
-#ifdef _DEBUG
+#ifndef RELEASE
 	// 5) Readback
 	const uint32_t slot = m_ReadbackSlot;
 	ctx.TransitionResource(m_CounterBuffer, D3D12_RESOURCE_STATE_COPY_SOURCE);
@@ -257,14 +257,6 @@ void SlotReusePool::Render(GraphicsContext& gfx, const Math::Camera& cam)
 	gfx.DrawInstanced(6, m_MaxParticles);
 }
 
-void SlotReusePool::ChangeMode()
-{
-	if (m_Mode == Particles::Mode::SlotReuse)
-		m_Mode = Particles::Mode::SlotReuseFlags;
-	else
-		m_Mode = Particles::Mode::SlotReuse;
-}
-
 bool SlotReusePool::VerifyInitialState()
 {
 	ReadbackBuffer verify;
@@ -293,7 +285,7 @@ bool SlotReusePool::VerifyInitialState()
 }
 
 
-#ifdef _DEBUG
+#ifndef RELEASE
 void SlotReusePool::CollectCounterReadback()
 {
 	const uint32_t readbackSlot = m_ReadbackSlot;

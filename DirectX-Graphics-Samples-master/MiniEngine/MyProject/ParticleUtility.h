@@ -9,4 +9,5 @@ namespace Particles
 
 	uint32_t HashU32(uint32_t x);
 
+	float ComputeEmitRateByAliveRatio(float aliveRatio, float minLife, float maxLife, uint32_t maxParticles);
 }

@@ -69,6 +69,13 @@ namespace Particles
 		AliveIndirect = 4,
 	};
 
+	inline bool IsSlotFamily(Mode m) { return m == Mode::SlotReuse || m == Mode::SlotReuseFlags; }
+	inline bool IsAliveFamily(Mode m) { return m == Mode::AliveDirect || m == Mode::AliveIndirect; }
+	inline bool IsSameFamily(Mode a, Mode b) 
+	{
+		return (IsSlotFamily(a) && IsSlotFamily(b)) || (IsAliveFamily(a) && IsAliveFamily(b));
+	}
+
 	// ----------------------
 	//		For DEBUG
 	// ----------------------

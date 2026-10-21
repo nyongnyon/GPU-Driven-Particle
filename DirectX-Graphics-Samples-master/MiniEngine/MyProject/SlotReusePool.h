@@ -19,11 +19,9 @@ public:
 	void Render(GraphicsContext& gfx, const Math::Camera& cam) override;
 
 	Particles::CounterSnapshot GetCounterSnapshot() const { return m_LastCounters; }
-	
-	void ChangeMode();
 
 private:
-#ifdef _DEBUG
+#ifndef RELEASE
 	void		 CollectCounterReadback();
 #endif
 	bool		 VerifyInitialState(); // Initialize시에 Buffer 설정이 정확한지 확인하는 함수

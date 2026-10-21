@@ -22,6 +22,7 @@ public:
 	virtual void Update(float deltaT, const EmitRequest& emitRequest) = 0;
 	virtual void Render(GraphicsContext& gfx, const Math::Camera& cam) = 0;
 	
+	void				SetMode(Particles::Mode mode) { m_Mode = mode; }
 	Particles::Mode		GetMode() const { return m_Mode; }
 	uint32_t			GetMaxParticles() const { return m_MaxParticles; }
 

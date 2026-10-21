@@ -22,7 +22,7 @@ public:
 	Particles::CounterSnapshot GetCounterSnapshot() const { return m_LastCounters; }
 
 private:
-#ifdef _DEBUG
+#ifndef RELEASE
 	void	CollectCounterReadback();
 #endif
 	bool	VerifyInitialState();

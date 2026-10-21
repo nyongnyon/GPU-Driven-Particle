@@ -14,7 +14,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
     if (p.life <= 0.0f)
     {
         p.life = 0.f;
-        p.flags &= ~PARTICLE_FLAG_ALIVE;
+        p.flags = 0;
         Particles[slot] = p;
 
         uint prevDead;

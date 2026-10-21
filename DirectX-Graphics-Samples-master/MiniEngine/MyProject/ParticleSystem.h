@@ -20,15 +20,18 @@ public:
 	void Update(float deltaT);
 	void Render(GraphicsContext& gfx, const Math::Camera& cam);
 
-	void SetMode(Particles::Mode mode);
+	void RequestMode(Particles::Mode mode);
 
 	Particles::ParticleStat GetParticleStat();
 
 private:
+	void ApplyPendingMode();
+
 	// -----------------------
 	//		Particle Setting
 	// -----------------------
 	std::unique_ptr<ParticlePool> m_ParticlePool;
 	ParticleEmitter				  m_ParticleEmitter;
+	Particles::Mode				  m_PendingMode = Particles::Mode::NONE;
 };
 

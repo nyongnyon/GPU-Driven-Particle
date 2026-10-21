@@ -160,7 +160,7 @@ void AliveListPool::Shutdown()
 
 void AliveListPool::Update(float deltaT, const EmitRequest& emitRequest)
 {
-#ifdef _DEBUG
+#ifndef RELEASE
 	CollectCounterReadback();
 #endif
 
@@ -226,7 +226,7 @@ void AliveListPool::Update(float deltaT, const EmitRequest& emitRequest)
 	{
 		{
 			// 4-1) PreSim
-			ScopedTimer _t(L"Particle PreSimulate (AliveIndirect)", ctx);
+			ScopedTimer _t(L"Particle PreSimulate (Alive)", ctx);
 			ctx.SetPipelineState(s_PreSimPSO);
 			ctx.Dispatch(1, 1, 1);
 		}
@@ -234,7 +234,7 @@ void AliveListPool::Update(float deltaT, const EmitRequest& emitRequest)
 
 		{
 			// 4-2) Simulate
-			ScopedTimer _t(L"Particle Simulate (AliveIndirect)", ctx);
+			ScopedTimer _t(L"Particle Simulate (Alive)", ctx);
 			ctx.SetPipelineState(s_SimulatePSO);
 			ctx.DispatchIndirect(m_IndirectArgsBuffer, kSimulateDispatchArgs);
 		}
@@ -248,6 +248,9 @@ void AliveListPool::Update(float deltaT, const EmitRequest& emitRequest)
 	}	
 	InsertUAVBarriers(ctx);
 
+	if (IsIndirect())
+		ctx.TransitionResource(m_IndirectArgsBuffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, true);
+
 	// 5) AfterSimulate
 	{
 		ScopedTimer _t(L"Particle After Sim (Alive)", ctx);
@@ -256,7 +259,7 @@ void AliveListPool::Update(float deltaT, const EmitRequest& emitRequest)
 	}
 	
 	// 6 Readback
-#ifdef _DEBUG
+#ifndef RELEASE
 	const uint32_t slot = m_ReadbackSlot;
 	ctx.TransitionResource(m_CounterBuffer, D3D12_RESOURCE_STATE_COPY_SOURCE);
 	ctx.CopyBufferRegion(m_CounterReadback[m_ReadbackSlot], 0, m_CounterBuffer, 0, kCounterBufferSize);
@@ -349,7 +352,7 @@ void AliveListPool::InsertUAVBarriers(ComputeContext& ctx)
 
 }
 
-#ifdef _DEBUG
+#ifndef RELEASE
 void AliveListPool::CollectCounterReadback()
 {
 	const uint32_t readbackSlot = m_ReadbackSlot;

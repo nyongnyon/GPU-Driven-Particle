@@ -31,7 +31,7 @@ void ParticleSystem::InitializePool(Particles::Mode mode, uint32_t maxParticles)
 	}
 	else if (mode == Mode::AliveDirect || mode == Mode::AliveIndirect)
 	{
-		m_ParticlePool = std::move(std::make_unique<AliveListPool>());
+		m_ParticlePool = std::move(std::make_unique<AliveListPool>(mode));
 	}
 
 	m_ParticlePool->Initialize(maxParticles);
@@ -50,6 +50,10 @@ void ParticleSystem::Shutdown()
 
 void ParticleSystem::Update(float deltaT)
 {
+	// if has request mode change
+	ApplyPendingMode();
+
+
 	m_ParticlePool->Update(deltaT, m_ParticleEmitter.RequestEmit(deltaT));
 }
 
@@ -58,19 +62,10 @@ void ParticleSystem::Render(GraphicsContext& gfx, const Math::Camera& cam)
 	m_ParticlePool->Render(gfx, cam);
 }
 
-void ParticleSystem::SetMode(Particles::Mode mode)
+void ParticleSystem::RequestMode(Particles::Mode mode)
 {
-	Particles::Mode originMode = m_ParticlePool->GetMode();
-
-	if (mode == originMode)
-		return;
-
-	if ((mode == Particles::Mode::SlotReuseFlags && originMode == Particles::Mode::SlotReuse)
-		|| (mode == Particles::Mode::SlotReuse && originMode == Particles::Mode::SlotReuseFlags))
-	{
-		static_cast<SlotReusePool*>(m_ParticlePool.get())->ChangeMode();
-	}
-
+	if (mode != m_ParticlePool->GetMode())
+		m_PendingMode = mode;
 }
 
 Particles::ParticleStat ParticleSystem::GetParticleStat()
@@ -85,11 +80,35 @@ Particles::ParticleStat ParticleSystem::GetParticleStat()
 		stat.counters = static_cast<SlotReusePool*>(m_ParticlePool.get())->GetCounterSnapshot();
 	}
 
-	else if (stat.mode == Particles::Mode::AliveDirect)
+	else if (stat.mode == Particles::Mode::AliveDirect
+		|| stat.mode == Particles::Mode::AliveIndirect)
 	{
 		stat.counters = static_cast<AliveListPool*>(m_ParticlePool.get())->GetCounterSnapshot();
 	}
 
 	return stat;
+}
+
+void ParticleSystem::ApplyPendingMode()
+{
+	if (m_PendingMode == Mode::NONE)
+		return;
+
+	Mode curMode = m_ParticlePool->GetMode();
+
+	if (IsSameFamily(curMode, m_PendingMode))
+	{
+		m_ParticlePool->SetMode(m_PendingMode);
+	}
+	else
+	{
+		const uint32_t maxParticles = m_ParticlePool->GetMaxParticles();
+		Graphics::g_CommandManager.IdleGPU(); // GPU의 사용이 끝날때까지 대기...
+		m_ParticlePool->Shutdown();
+		m_ParticlePool.reset();
+		InitializePool(m_PendingMode, maxParticles); // 새로운 풀 생성
+	}	
+
+	m_PendingMode = Mode::NONE;
 }
 
