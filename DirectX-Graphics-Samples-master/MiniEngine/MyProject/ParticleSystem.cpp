@@ -14,6 +14,7 @@
 #include "ParticleUtility.h"
 #include "ParticlePool.h"
 #include "SlotReusePool.h"
+#include "AliveListPool.h"
 
 #include <algorithm>
 
@@ -22,14 +23,24 @@ using namespace Math;
 using namespace Particles;
 
 
-void ParticleSystem::Initialize(Particles::Mode mode, uint32_t maxParticles)
+void ParticleSystem::InitializePool(Particles::Mode mode, uint32_t maxParticles)
 {
 	if (mode == Mode::SlotReuse || mode == Mode::SlotReuseFlags)
 	{
 		m_ParticlePool = std::move(std::make_unique<SlotReusePool>(mode));
 	}
+	else if (mode == Mode::AliveDirect)
+	{
+		m_ParticlePool = std::move(std::make_unique<AliveListPool>());
+	}
 
 	m_ParticlePool->Initialize(maxParticles);
+}
+
+void ParticleSystem::InitializeEmitter(const Math::Vector3& emitterPosition, const EmitterParams& emitParams)
+{
+	m_ParticleEmitter.emitParams = emitParams;
+	m_ParticleEmitter.position = emitterPosition;
 }
 
 void ParticleSystem::Shutdown()
@@ -37,9 +48,9 @@ void ParticleSystem::Shutdown()
 	m_ParticlePool->Shutdown();
 }
 
-void ParticleSystem::Update(float deltaT, const Math::Vector3& emitterPosition)
+void ParticleSystem::Update(float deltaT)
 {
-	m_ParticlePool->Update(deltaT, emitterPosition);
+	m_ParticlePool->Update(deltaT, m_ParticleEmitter.RequestEmit(deltaT));
 }
 
 void ParticleSystem::Render(GraphicsContext& gfx, const Math::Camera& cam)

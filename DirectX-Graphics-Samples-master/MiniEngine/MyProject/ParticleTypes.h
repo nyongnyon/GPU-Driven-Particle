@@ -4,6 +4,9 @@
 
 namespace Particles
 {
+	//-------------------------
+	//		For Buffer
+	//-------------------------
 	struct Particle
 	{
 		DirectX::XMFLOAT3 position;	float life;
@@ -70,5 +73,7 @@ namespace Particles
 		uint32_t emitRequested = 0;   // counters와 같은 프레임의 요청량
 		bool     hasCounter = false;
 	};
+
+	
 }
 

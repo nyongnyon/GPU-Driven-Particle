@@ -10,6 +10,7 @@
 #include "Camera.h"
 
 #include "ParticleUtility.h"
+#include "ParticleEmitter.h"
 
 #include "CompiledShaders/ParticleEmitAliveCS.h"
 #include "CompiledShaders/ParticleSimulateAliveCS.h"
@@ -37,13 +38,6 @@ namespace
 	ComputePSO		s_AfterSimPSO(L"Particle Alive After Sim PSO");
 	
 	GraphicsPSO		s_DrawPSO(L"Particle Alive Draw PSO");
-
-
-	uint32_t HashU32(uint32_t x)
-	{
-		x ^= x >> 16; x *= 0x7feb352d; x ^= x >> 15; x *= 0x846ca68b; x ^= x >> 16;
-		return x;
-	}
 
 	// TEMP Values
 	NumVar g_TargetAliveRatio("Particles/Target alive ratio", 0.5f, 0.05f, 0.95f, 0.05f);
@@ -92,7 +86,7 @@ namespace
 		
 		// 2) Draw PSO
 		s_DrawPSO.SetRootSignature(s_DrawSig);
-		s_DrawPSO.SetRasterizerState(RasterizerShadowTwoSided);
+		s_DrawPSO.SetRasterizerState(RasterizerTwoSided);
 		s_DrawPSO.SetBlendState(BlendAdditive);
 		s_DrawPSO.SetDepthStencilState(DepthStateDisabled);
 		s_DrawPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
@@ -100,6 +94,8 @@ namespace
 		s_DrawPSO.SetVertexShader(g_pParticleDrawAliveVS, sizeof(g_pParticleDrawAliveVS));
 		s_DrawPSO.SetPixelShader(g_pParticleDrawPS, sizeof(g_pParticleDrawPS));
 		s_DrawPSO.Finalize();
+
+		s_Initialized = true;
 	}
 };
 
@@ -156,13 +152,128 @@ void AliveListPool::Shutdown()
 	m_ParticleBuffer.Destroy();
 }
 
-void AliveListPool::Update(float deltaT, const Math::Vector3& emitterPosition)
+void AliveListPool::Update(float deltaT, const EmitRequest& emitRequest)
 {
+#ifdef _DEBUG
+	CollectCounterReadback();
+#endif
 
+	Simconstants sc = {};
+	XMStoreFloat3(&sc.emitterPos, emitRequest.emitPosition);
+	sc.deltaTime = deltaT;
+	sc.gravity = { 0.f, -2.f, 0.f };			// TEMP
+	sc.emitCount = emitRequest.emitCount;
+	sc.minLife = emitRequest.emitParams.minLife;
+	sc.maxLife = emitRequest.emitParams.maxLife;
+	sc.minSpeed = 1.f;
+	sc.maxSpeed = 4.f;
+	sc.particleSize = emitRequest.emitParams.minSize;	// TEMP
+	sc.maxParticles = m_MaxParticles;
+	sc.randomSeed = HashU32(m_FrameIndex + 1);
+	sc.baseColor = PackColor(255, 128, 45, 255); // TEMP 주황
+
+	// -------------------------
+	//		BEGIN COMPUTE
+	// -------------------------
+	ComputeContext& ctx = ComputeContext::Begin(L"Particle Update (Alive)");
+
+	alignas(16) static const uint32_t kZeros[4] = { 0, 0, 0, 0 };
+	ctx.WriteBuffer(m_CounterBuffer, kEmitCount, kZeros, 8); // EmitCount, AfterSim 초기화
+
+	// 1) Convert Buffers -> UAV
+	ctx.TransitionResource(m_ParticleBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	ctx.TransitionResource(m_DeadListBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	ctx.TransitionResource(m_AliveListBuffer[0], D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	ctx.TransitionResource(m_AliveListBuffer[1], D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	ctx.TransitionResource(m_CounterBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
+
+	// 2) Bind
+	ctx.SetRootSignature(s_ComputeSig);
+	ctx.SetDynamicConstantBufferView(kComputeCBVs, sizeof(sc), &sc);
+
+	const D3D12_CPU_DESCRIPTOR_HANDLE uavs[5] =
+	{
+		m_ParticleBuffer.GetUAV(), // u0
+		m_DeadListBuffer.GetUAV(), // u1
+		m_CounterBuffer.GetUAV(), // u2
+		AliveIn().GetUAV(),		// u4
+		AliveOut().GetUAV()		// u5
+	};
+
+	ctx.SetDynamicDescriptors(kComputeUAVs, 0, 5, uavs);
+
+	// 3) Emit
+	{
+		ScopedTimer _t(L"Particle Emit (Alive)", ctx); // RAII
+		if (emitRequest.emitCount > 0)
+		{
+			ctx.SetPipelineState(s_EmitPSO);
+			ctx.Dispatch1D(emitRequest.emitCount, sThreadGroupSize);
+		}
+	}
+	InsertUAVBarriers(ctx);
+
+	// 4) Simulate
+	{
+		ScopedTimer _t(L"Particle Simulate (Alive)", ctx);
+		ctx.SetPipelineState(s_SimulatePSO);
+		ctx.Dispatch1D(m_MaxParticles, sThreadGroupSize);
+	}
+	InsertUAVBarriers(ctx);
+
+	// 5) AfterSimulate
+	{
+		ScopedTimer _t(L"Particle After Sim (Alive)", ctx);
+		ctx.SetPipelineState(s_AfterSimPSO);
+		ctx.Dispatch(1, 1, 1);
+	}
+	
+	// 6 Readback
+#ifdef _DEBUG
+	const uint32_t slot = m_ReadbackSlot;
+	ctx.TransitionResource(m_CounterBuffer, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	ctx.CopyBufferRegion(m_CounterReadback[m_ReadbackSlot], 0, m_CounterBuffer, 0, kCounterBufferSize);
+	m_ReadbackFence[slot] = ctx.Finish();
+	m_ReadbackSlot = (m_ReadbackSlot + 1) % sReadbackLatency;
+#else
+	ctx.Finish();
+#endif
+	++m_FrameIndex;
+
+	// Alive In <-> Alive Out 바꾸기
+	m_AliveCurrent = 1 - m_AliveCurrent;
 }
 
 void AliveListPool::Render(GraphicsContext& gfx, const Math::Camera& cam)
 {
+	gfx.TransitionResource(m_ParticleBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	gfx.TransitionResource(m_CounterBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	gfx.TransitionResource(AliveIn(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+	DrawConstants dc = {};
+	XMStoreFloat4x4(&dc.viewProj, cam.GetViewProjMatrix());
+	XMStoreFloat4(&dc.camRight, cam.GetRightVec());
+	dc.camRight.w = 0.f;
+	XMStoreFloat4(&dc.camUp, cam.GetUpVec());
+	dc.camUp.w = 0.f;
+
+	gfx.SetRootSignature(s_DrawSig);
+	gfx.SetPipelineState(s_DrawPSO);
+	gfx.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	gfx.SetDynamicConstantBufferView(kDrawCBVs, sizeof(dc), &dc);
+
+	const D3D12_CPU_DESCRIPTOR_HANDLE srvs[3] =
+	{
+		m_ParticleBuffer.GetSRV(), // t0
+		AliveIn().GetSRV(), // t1
+		m_CounterBuffer.GetSRV() // t2
+	};;
+	gfx.SetDynamicDescriptors(kDrawSRVs, 0, 3, srvs);
+
+
+	ScopedTimer _t(L"Particle Draw (Alive)", gfx);
+	gfx.DrawInstanced(6, m_MaxParticles);
+
 }
 
 bool AliveListPool::VerifyInitialState()
@@ -191,3 +302,30 @@ bool AliveListPool::VerifyInitialState()
 
 	return isVerified;
 }
+
+void AliveListPool::InsertUAVBarriers(ComputeContext& ctx)
+{
+	ctx.InsertUAVBarrier(m_ParticleBuffer);
+	ctx.InsertUAVBarrier(m_DeadListBuffer);
+	ctx.InsertUAVBarrier(m_AliveListBuffer[0]);
+	ctx.InsertUAVBarrier(m_AliveListBuffer[1]);
+	ctx.InsertUAVBarrier(m_CounterBuffer, true);
+
+}
+
+#ifdef _DEBUG
+void AliveListPool::CollectCounterReadback()
+{
+	const uint32_t readbackSlot = m_ReadbackSlot;
+	const uint64_t readbackFence = m_ReadbackFence[readbackSlot];
+	if (readbackFence == 0)
+		return;
+
+	if (!g_CommandManager.IsFenceComplete(readbackFence))
+		g_CommandManager.WaitForFence(readbackFence);
+
+	std::memcpy(&m_LastCounters, m_CounterReadback[readbackSlot].Map(), sizeof(CounterSnapshot));
+	m_CounterReadback[readbackSlot].Unmap();
+	m_ReadbackFence[readbackSlot] = 0;
+}
+#endif

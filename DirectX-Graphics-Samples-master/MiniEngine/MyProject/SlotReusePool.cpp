@@ -10,6 +10,7 @@
 #include "Camera.h"
 
 #include "ParticleUtility.h"
+#include "ParticleEmitter.h"
 
 #include "CompiledShaders/ParticleEmitReuseCS.h"
 #include "CompiledShaders/ParticleSimulateCS.h"
@@ -40,17 +41,11 @@ namespace
 	GraphicsPSO		s_DrawPSO(L"Particle Slot Reuse Draw PSO");
 	GraphicsPSO		s_DrawFlagsPSO(L"Particle Slot Reuse Flags Draw PSO");
 
-	uint32_t HashU32(uint32_t x)
-	{
-		x ^= x >> 16; x *= 0x7feb352d; x ^= x >> 15; x *= 0x846ca68b; x ^= x >> 16;
-		return x;
-	}
-
 	// TEMP Values
-	NumVar g_TargetAliveRatio("Particles/Target alive ratio", 0.5f, 0.05f, 0.95f, 0.05f);
-	NumVar g_MinLife("Particles/Life min", 1.0f, 0.1f, 10.f, 0.1f);
-	NumVar g_MaxLife("Particles/Life max", 3.0f, 0.1f, 10.f, 0.1f);
-	NumVar g_Size("Particles/Size", 0.03f, 0.005f, 1.f, 0.005f);
+	//NumVar g_TargetAliveRatio("Particles/Target alive ratio", 0.5f, 0.05f, 0.95f, 0.05f);
+	//NumVar g_MinLife("Particles/Life min", 1.0f, 0.1f, 10.f, 0.1f);
+	//NumVar g_MaxLife("Particles/Life max", 3.0f, 0.1f, 10.f, 0.1f);
+	//NumVar g_Size("Particles/Size", 0.03f, 0.005f, 1.f, 0.005f);
 
 	void InitializeSetting()
 	{
@@ -158,24 +153,22 @@ void SlotReusePool::Shutdown()
 	m_ParticleBuffer.Destroy();
 }
 
-void SlotReusePool::Update(float deltaT, const Math::Vector3& emitterPosition)
+void SlotReusePool::Update(float deltaT, const EmitRequest& emitRequest)
 {
 #ifdef _DEBUG
 	CollectCounterReadback();
 #endif
-	const uint32_t emitCount = ComputeEmitCount(deltaT);
 
-	// TEMP variables
 	Simconstants sc = {};
-	XMStoreFloat3(&sc.emitterPos, emitterPosition);
+	XMStoreFloat3(&sc.emitterPos, emitRequest.emitPosition);
 	sc.deltaTime = deltaT;
-	sc.gravity = { 0.f, -2.f, 0.f };
-	sc.emitCount = emitCount;
-	sc.minLife = g_MinLife;
-	sc.maxLife = g_MaxLife;
+	sc.gravity = { 0.f, -2.f, 0.f };			// TEMP
+	sc.emitCount = emitRequest.emitCount;
+	sc.minLife = emitRequest.emitParams.minLife;
+	sc.maxLife = emitRequest.emitParams.maxLife;
 	sc.minSpeed = 1.f;
 	sc.maxSpeed = 4.f;
-	sc.particleSize = g_Size;
+	sc.particleSize = emitRequest.emitParams.minSize;	// TEMP
 	sc.maxParticles = m_MaxParticles;
 	sc.randomSeed = HashU32(m_FrameIndex + 1);
 	sc.baseColor = PackColor(255, 128, 45, 255); // TEMP ÁÖÈ²
@@ -205,10 +198,10 @@ void SlotReusePool::Update(float deltaT, const Math::Vector3& emitterPosition)
 	// 3) Emit
 	{
 		ScopedTimer _t(L"Particle Emit", ctx); // RAII
-		if (emitCount > 0)
+		if (emitRequest.emitCount > 0)
 		{
 			ctx.SetPipelineState(s_EmitPSO);
-			ctx.Dispatch1D(emitCount, sThreadGroupSize);
+			ctx.Dispatch1D(emitRequest.emitCount, sThreadGroupSize);
 		}
 	}
 
@@ -220,7 +213,7 @@ void SlotReusePool::Update(float deltaT, const Math::Vector3& emitterPosition)
 	// 4) Simulate
 	{
 		const bool useFlagArray = (m_Mode == Mode::SlotReuseFlags);
-		ScopedTimer _t(useFlagArray ? L"Particle Simulate" : L"Particle Simulate Flags", ctx);
+		ScopedTimer _t(useFlagArray ? L"Particle Simulate Flags" : L"Particle Simulate", ctx);
 		ctx.SetPipelineState(useFlagArray ? s_SimulateFlagsPSO : s_SimulatePSO);
 		ctx.Dispatch1D(m_MaxParticles, sThreadGroupSize);
 	}
@@ -232,6 +225,8 @@ void SlotReusePool::Update(float deltaT, const Math::Vector3& emitterPosition)
 	ctx.CopyBufferRegion(m_CounterReadback[m_ReadbackSlot], 0, m_CounterBuffer, 0, kCounterBufferSize);
 	m_ReadbackFence[slot] = ctx.Finish();
 	m_ReadbackSlot = (m_ReadbackSlot + 1) % sReadbackLatency;
+#else
+	ctx.Finish();
 #endif
 
 	++m_FrameIndex;
@@ -295,17 +290,6 @@ bool SlotReusePool::VerifyInitialState()
 	verify.Destroy();
 
 	return isVerified;
-}
-
-uint32_t SlotReusePool::ComputeEmitCount(float deltaT) // TEMP
-{
-	const float avgLife = max(0.5f * ((float)g_MinLife + (float)g_MaxLife), 0.01f);
-	const float rate = (float)g_TargetAliveRatio * float(m_MaxParticles) / avgLife;
-
-	const float want = rate * deltaT + m_EmitCarry;
-	const uint32_t count = (uint32_t)want;
-	m_EmitCarry = want - float(count);
-	return min(count, m_MaxParticles);
 }
 
 

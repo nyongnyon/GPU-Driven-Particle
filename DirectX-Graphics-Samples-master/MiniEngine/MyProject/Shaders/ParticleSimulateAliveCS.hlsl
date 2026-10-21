@@ -25,7 +25,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
             
     p.velocity += Gravity * DeltaTime;
     p.position += p.velocity * DeltaTime;
-    Particles[i] = p;
+    Particles[slot] = p;
 
     uint outIndex;
     Counters.InterlockedAdd(COUNTER_ALIVE_AFTER_SIM, 1, outIndex);

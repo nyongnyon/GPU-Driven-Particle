@@ -15,23 +15,30 @@ public:
 	void CreateBuffers(uint32_t maxParticles) override;
 	void Shutdown() override;
 
-	void Update(float deltaT, const Math::Vector3& emitterPosition) override;
+	void Update(float deltaT, const EmitRequest& emitRequest) override;
 	void Render(GraphicsContext& gfx, const Math::Camera& cam) override;
 
 private:
+#ifdef _DEBUG
+	void	CollectCounterReadback();
+#endif
 	bool	VerifyInitialState();
-	
-	static constexpr uint32_t sThreadGroupSize = 64;
+	void	InsertUAVBarriers(ComputeContext& ctx);
 
-	float	m_EmitCarry = 0.f;
+	StructuredBuffer& AliveIn() { return m_AliveListBuffer[m_AliveCurrent]; }
+	StructuredBuffer& AliveOut() { return m_AliveListBuffer[1 - m_AliveCurrent]; }
+
+	static constexpr uint32_t sThreadGroupSize = 64;
 
 	// -----------------------
 	//			buffer
 	// -----------------------
 	StructuredBuffer	m_ParticleBuffer;
 	StructuredBuffer	m_DeadListBuffer;
-	StructuredBuffer	m_AliveListBuffer[2]; // In / Out (Double Buffering ?)
+	StructuredBuffer	m_AliveListBuffer[2]; // In / Out (ping-pong)
 	ByteAddressBuffer	m_CounterBuffer;
+
+	uint32_t			m_AliveCurrent = 0;
 
 	// -----------------------
 	//		Readback buffer

@@ -4,19 +4,22 @@
 #include "ParticleTypes.h"
 
 class GraphicsContext;
+struct EmitRequest;
+
 namespace Math { class Camera; }
 
 class ParticlePool
 {
 public:
 	ParticlePool(Particles::Mode mode) : m_Mode(mode) {}
+	virtual ~ParticlePool() {}
 
 public:
 	virtual void Initialize(uint32_t maxParticles = 0) = 0;
 	virtual void CreateBuffers(uint32_t maxParticles = 0) = 0;
 	virtual void Shutdown() = 0;
 
-	virtual void Update(float deltaT, const Math::Vector3& emitterPosition) = 0;
+	virtual void Update(float deltaT, const EmitRequest& emitRequest) = 0;
 	virtual void Render(GraphicsContext& gfx, const Math::Camera& cam) = 0;
 	
 	Particles::Mode		GetMode() const { return m_Mode; }

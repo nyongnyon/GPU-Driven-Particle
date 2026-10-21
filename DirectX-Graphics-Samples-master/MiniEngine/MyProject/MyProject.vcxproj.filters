@@ -27,6 +27,9 @@
     <Filter Include="Shaders\Particle">
       <UniqueIdentifier>{71bedd0b-2814-4ac7-991f-2796dae0930c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Particle\Emitter">
+      <UniqueIdentifier>{1c2093a9-1b54-4860-a89e-ea0bac92f009}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -51,8 +54,11 @@
     <ClCompile Include="ParticleUtility.cpp">
       <Filter>Particle\Util</Filter>
     </ClCompile>
+    <ClCompile Include="ParticleEmitter.cpp">
+      <Filter>Particle\Emitter</Filter>
+    </ClCompile>
     <ClCompile Include="AliveListPool.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Particle\ParticlePool</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -78,7 +84,12 @@
     <ClInclude Include="ParticleUtility.h">
       <Filter>Particle\Util</Filter>
     </ClInclude>
-    <ClInclude Include="AliveListPool.h" />
+    <ClInclude Include="ParticleEmitter.h">
+      <Filter>Particle\Emitter</Filter>
+    </ClInclude>
+    <ClInclude Include="AliveListPool.h">
+      <Filter>Particle\ParticlePool</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="Logo.png">

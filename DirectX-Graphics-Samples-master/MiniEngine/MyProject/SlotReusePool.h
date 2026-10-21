@@ -4,6 +4,7 @@
 #include "GpuBuffer.h"
 #include "ReadbackBuffer.h"
 
+
 class SlotReusePool : public ParticlePool
 {
 public:
@@ -14,7 +15,7 @@ public:
 	void CreateBuffers(uint32_t maxParticles) override;
 	void Shutdown() override;
 
-	void Update(float deltaT, const Math::Vector3& emitterPosition) override;
+	void Update(float deltaT, const EmitRequest& emitRequest) override;
 	void Render(GraphicsContext& gfx, const Math::Camera& cam) override;
 
 	Particles::CounterSnapshot GetCounterSnapshot() const { return m_LastCounters; }
@@ -23,15 +24,12 @@ public:
 
 private:
 #ifdef _DEBUG
-	void CollectCounterReadback();
+	void		 CollectCounterReadback();
 #endif
-
 	bool		 VerifyInitialState(); // Initialize시에 Buffer 설정이 정확한지 확인하는 함수
-	uint32_t	 ComputeEmitCount(float deltaT);
 
 	static constexpr uint32_t sThreadGroupSize = 64;
-	
-	float				m_EmitCarry = 0.f;
+		
 
 	// -----------------------
 	//			buffer

@@ -75,7 +75,8 @@ void MyProject::Startup( void )
     m_CameraController.reset(NewCam);
 
     // Setup your data
-    m_Particles.Initialize(Particles::Mode::SlotReuse , 100000);
+    m_Particles.InitializePool(Particles::Mode::AliveDirect , 100000);
+    m_Particles.InitializeEmitter(Vector3(0.f, 0.f, 0.f), EmitterParams());
 }
 
 void MyProject::Cleanup( void )
@@ -101,7 +102,7 @@ void MyProject::Update( float deltaT )
     DebugDraw::AddLine(Vector3(-1.f, 0.f, 0.f), Vector3(1.f, 0.f, 0.f), Color(1.f, 1.f, 1.f));
 
 
-    m_Particles.Update(deltaT, Vector3(0.f, 1.f, 0.f));
+    m_Particles.Update(deltaT);
 
 
     UpdateImGui(deltaT);
