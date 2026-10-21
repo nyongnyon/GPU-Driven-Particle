@@ -29,7 +29,7 @@ void ParticleSystem::InitializePool(Particles::Mode mode, uint32_t maxParticles)
 	{
 		m_ParticlePool = std::move(std::make_unique<SlotReusePool>(mode));
 	}
-	else if (mode == Mode::AliveDirect)
+	else if (mode == Mode::AliveDirect || mode == Mode::AliveIndirect)
 	{
 		m_ParticlePool = std::move(std::make_unique<AliveListPool>());
 	}
@@ -80,9 +80,14 @@ Particles::ParticleStat ParticleSystem::GetParticleStat()
 	stat.maxParticles = m_ParticlePool->GetMaxParticles();
 
 	if (stat.mode == Particles::Mode::SlotReuse ||
-		stat.mode == Particles::Mode::SlotReuseFlags)
+		stat.mode == Particles::Mode::SlotReuseFlags )
 	{
 		stat.counters = static_cast<SlotReusePool*>(m_ParticlePool.get())->GetCounterSnapshot();
+	}
+
+	else if (stat.mode == Particles::Mode::AliveDirect)
+	{
+		stat.counters = static_cast<AliveListPool*>(m_ParticlePool.get())->GetCounterSnapshot();
 	}
 
 	return stat;

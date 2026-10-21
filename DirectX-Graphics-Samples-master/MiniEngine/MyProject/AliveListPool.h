@@ -7,7 +7,8 @@
 class AliveListPool : public ParticlePool
 {
 public:
-	AliveListPool() : ParticlePool(Particles::Mode::AliveDirect) {}
+	AliveListPool(Particles::Mode mode = Particles::Mode::AliveDirect)
+		: ParticlePool(mode) {}
 
 public:
 	// IParticlePool을(를) 통해 상속됨
@@ -18,6 +19,8 @@ public:
 	void Update(float deltaT, const EmitRequest& emitRequest) override;
 	void Render(GraphicsContext& gfx, const Math::Camera& cam) override;
 
+	Particles::CounterSnapshot GetCounterSnapshot() const { return m_LastCounters; }
+
 private:
 #ifdef _DEBUG
 	void	CollectCounterReadback();
@@ -25,6 +28,7 @@ private:
 	bool	VerifyInitialState();
 	void	InsertUAVBarriers(ComputeContext& ctx);
 
+	bool	IsIndirect() const { return m_Mode == Particles::Mode::AliveIndirect; }
 	StructuredBuffer& AliveIn() { return m_AliveListBuffer[m_AliveCurrent]; }
 	StructuredBuffer& AliveOut() { return m_AliveListBuffer[1 - m_AliveCurrent]; }
 
@@ -37,6 +41,7 @@ private:
 	StructuredBuffer	m_DeadListBuffer;
 	StructuredBuffer	m_AliveListBuffer[2]; // In / Out (ping-pong)
 	ByteAddressBuffer	m_CounterBuffer;
+	ByteAddressBuffer	m_IndirectArgsBuffer; // FOR INDIRECT
 
 	uint32_t			m_AliveCurrent = 0;
 

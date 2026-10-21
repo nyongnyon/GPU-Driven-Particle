@@ -13,6 +13,7 @@
 #include "ParticleEmitter.h"
 
 #include "CompiledShaders/ParticleEmitAliveCS.h"
+#include "CompiledShaders/ParticlePreSim.h"
 #include "CompiledShaders/ParticleSimulateAliveCS.h"
 #include "CompiledShaders/ParticleAfterSimAliveCS.h"
 #include "CompiledShaders/ParticleDrawAliveVS.h"
@@ -34,18 +35,13 @@ namespace
 	RootSignature	s_ComputeSig;
 	RootSignature	s_DrawSig;
 	ComputePSO		s_EmitPSO(L"Particle Alive Emit PSO");
+	ComputePSO		s_PreSimPSO(L"Particle Alive Pre Sim PSO");
 	ComputePSO		s_SimulatePSO(L"Particle Alive Simulate PSO");
 	ComputePSO		s_AfterSimPSO(L"Particle Alive After Sim PSO");
 	
 	GraphicsPSO		s_DrawPSO(L"Particle Alive Draw PSO");
 
-	// TEMP Values
-	NumVar g_TargetAliveRatio("Particles/Target alive ratio", 0.5f, 0.05f, 0.95f, 0.05f);
-	NumVar g_MinLife("Particles/Life min", 1.0f, 0.1f, 10.f, 0.1f);
-	NumVar g_MaxLife("Particles/Life max", 3.0f, 0.1f, 10.f, 0.1f);
-	NumVar g_Size("Particles/Size", 0.03f, 0.005f, 1.f, 0.005f);
-
-	void InitializeSetting()
+	void InitializeSetting(bool indirect)
 	{
 		if (s_Initialized)
 			return;
@@ -57,9 +53,10 @@ namespace
 		// 1) Compute RootSig
 		s_ComputeSig.Reset(kNumComputeRootParams, 0);
 		s_ComputeSig[kComputeCBVs].InitAsConstantBuffer(0);
-		s_ComputeSig[kComputeUAVs].InitAsDescriptorTable(2);
+		s_ComputeSig[kComputeUAVs].InitAsDescriptorTable(3);
 		s_ComputeSig[kComputeUAVs].SetTableRange(0, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 3);
 		s_ComputeSig[kComputeUAVs].SetTableRange(1, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 4, 2);
+		s_ComputeSig[kComputeUAVs].SetTableRange(2, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 6, 1); // FOR INDIRECT		
 		s_ComputeSig.Finalize(L"Particle Alive List Compute RoogSig");
 
 		// 2) Draw RootSig
@@ -75,6 +72,10 @@ namespace
 		s_EmitPSO.SetRootSignature(s_ComputeSig);
 		s_EmitPSO.SetComputeShader(g_pParticleEmitAliveCS, sizeof(g_pParticleEmitAliveCS));
 		s_EmitPSO.Finalize();
+
+		s_PreSimPSO.SetRootSignature(s_ComputeSig);
+		s_PreSimPSO.SetComputeShader(g_pParticlePreSim, sizeof(g_pParticlePreSim));
+		s_PreSimPSO.Finalize();
 
 		s_SimulatePSO.SetRootSignature(s_ComputeSig);
 		s_SimulatePSO.SetComputeShader(g_pParticleSimulateAliveCS, sizeof(g_pParticleSimulateAliveCS));
@@ -103,7 +104,7 @@ namespace
 void AliveListPool::Initialize(uint32_t maxParticles)
 {
 	if (!s_Initialized)
-		InitializeSetting();
+		InitializeSetting(IsIndirect());
 
 	CreateBuffers(maxParticles);
 
@@ -135,6 +136,10 @@ void AliveListPool::CreateBuffers(uint32_t maxParticles)
 	initSnapshot.deadCount = m_MaxParticles;
 	m_CounterBuffer.Create(L"Particle CounterBuffer", kCounterBufferSize / 4, sizeof(uint32_t), &initSnapshot);
 	
+	// 5) For Indirect Ver, Indirect Args Buffer
+	alignas(16) const uint32_t initArgs[kIndirectArgsSize / sizeof(uint32_t)] = {0, 1, 1, 0, /*Compute Args*/ 6, 0, 0, 0 /*Draw Args*/};
+	m_IndirectArgsBuffer.Create(L"Particle IndirectBuffer", kIndirectArgsSize / sizeof(uint32_t), sizeof(uint32_t), initArgs);
+	
 	// Readback Buffer
 	for (uint32_t i = 0; i < sReadbackLatency; ++i)
 		m_CounterReadback[i].Create(L"Particle Counter ReadBack", kCounterBufferSize / 4, sizeof(uint32_t));
@@ -146,6 +151,7 @@ void AliveListPool::Shutdown()
 	for (uint32_t i = 0; i < sReadbackLatency; ++i)
 		m_CounterReadback[i].Destroy();
 	m_CounterBuffer.Destroy();
+	m_IndirectArgsBuffer.Destroy();
 	m_AliveListBuffer[0].Destroy();
 	m_AliveListBuffer[1].Destroy();
 	m_DeadListBuffer.Destroy();
@@ -185,26 +191,28 @@ void AliveListPool::Update(float deltaT, const EmitRequest& emitRequest)
 	ctx.TransitionResource(m_DeadListBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	ctx.TransitionResource(m_AliveListBuffer[0], D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	ctx.TransitionResource(m_AliveListBuffer[1], D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	ctx.TransitionResource(m_IndirectArgsBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	ctx.TransitionResource(m_CounterBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
 	// 2) Bind
 	ctx.SetRootSignature(s_ComputeSig);
 	ctx.SetDynamicConstantBufferView(kComputeCBVs, sizeof(sc), &sc);
 
-	const D3D12_CPU_DESCRIPTOR_HANDLE uavs[5] =
+	const D3D12_CPU_DESCRIPTOR_HANDLE uavs[6] =
 	{
 		m_ParticleBuffer.GetUAV(), // u0
 		m_DeadListBuffer.GetUAV(), // u1
 		m_CounterBuffer.GetUAV(), // u2
 		AliveIn().GetUAV(),		// u4
-		AliveOut().GetUAV()		// u5
+		AliveOut().GetUAV(),		// u5
+		m_IndirectArgsBuffer.GetUAV() // u6
 	};
 
-	ctx.SetDynamicDescriptors(kComputeUAVs, 0, 5, uavs);
+	ctx.SetDynamicDescriptors(kComputeUAVs, 0, 6, uavs);
 
 	// 3) Emit
 	{
-		ScopedTimer _t(L"Particle Emit (Alive)", ctx); // RAII
+		ScopedTimer _t(L"Particle Emit (Alive)", ctx);
 		if (emitRequest.emitCount > 0)
 		{
 			ctx.SetPipelineState(s_EmitPSO);
@@ -214,11 +222,30 @@ void AliveListPool::Update(float deltaT, const EmitRequest& emitRequest)
 	InsertUAVBarriers(ctx);
 
 	// 4) Simulate
+	if (IsIndirect())
 	{
+		{
+			// 4-1) PreSim
+			ScopedTimer _t(L"Particle PreSimulate (AliveIndirect)", ctx);
+			ctx.SetPipelineState(s_PreSimPSO);
+			ctx.Dispatch(1, 1, 1);
+		}
+		ctx.TransitionResource(m_IndirectArgsBuffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, true);
+
+		{
+			// 4-2) Simulate
+			ScopedTimer _t(L"Particle Simulate (AliveIndirect)", ctx);
+			ctx.SetPipelineState(s_SimulatePSO);
+			ctx.DispatchIndirect(m_IndirectArgsBuffer, kSimulateDispatchArgs);
+		}
+	}
+	else
+	{
+		// 4-1) Simulate
 		ScopedTimer _t(L"Particle Simulate (Alive)", ctx);
 		ctx.SetPipelineState(s_SimulatePSO);
 		ctx.Dispatch1D(m_MaxParticles, sThreadGroupSize);
-	}
+	}	
 	InsertUAVBarriers(ctx);
 
 	// 5) AfterSimulate
@@ -250,6 +277,9 @@ void AliveListPool::Render(GraphicsContext& gfx, const Math::Camera& cam)
 	gfx.TransitionResource(m_CounterBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	gfx.TransitionResource(AliveIn(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
+	if (IsIndirect())
+		gfx.TransitionResource(m_IndirectArgsBuffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+
 	DrawConstants dc = {};
 	XMStoreFloat4x4(&dc.viewProj, cam.GetViewProjMatrix());
 	XMStoreFloat4(&dc.camRight, cam.GetRightVec());
@@ -270,10 +300,16 @@ void AliveListPool::Render(GraphicsContext& gfx, const Math::Camera& cam)
 	};;
 	gfx.SetDynamicDescriptors(kDrawSRVs, 0, 3, srvs);
 
-
-	ScopedTimer _t(L"Particle Draw (Alive)", gfx);
-	gfx.DrawInstanced(6, m_MaxParticles);
-
+	if (IsIndirect())
+	{
+		ScopedTimer _t(L"Particle Draw (Alive)", gfx);
+		gfx.DrawIndirect(m_IndirectArgsBuffer, kDrawArgs);
+	}
+	else
+	{
+		ScopedTimer _t(L"Particle Draw (Alive)", gfx);
+		gfx.DrawInstanced(6, m_MaxParticles);
+	}
 }
 
 bool AliveListPool::VerifyInitialState()

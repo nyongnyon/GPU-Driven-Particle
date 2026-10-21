@@ -172,5 +172,8 @@
     <FxCompile Include="Shaders\ParticleDrawAliveVS.hlsl">
       <Filter>Shaders\Particle</Filter>
     </FxCompile>
+    <FxCompile Include="Shaders\ParticlePreSim.hlsl">
+      <Filter>Shaders\Particle</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

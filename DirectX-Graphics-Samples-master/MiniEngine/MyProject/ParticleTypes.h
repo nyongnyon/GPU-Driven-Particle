@@ -27,6 +27,13 @@ namespace Particles
 		kCounterBufferSize = 16
 	};
 
+	enum IndirectArgsOffset : uint32_t
+	{
+		kSimulateDispatchArgs = 0,
+		kDrawArgs = 16,
+		kIndirectArgsSize = 32,
+	};
+
 	// CounterBuffer에 사용될 값
 	struct alignas(16) CounterSnapshot
 	{
@@ -59,8 +66,8 @@ namespace Particles
 		SlotReuse = 1,
 		SlotReuseFlags = 2,
 		AliveDirect = 3,
+		AliveIndirect = 4,
 	};
-
 
 	// ----------------------
 	//		For DEBUG

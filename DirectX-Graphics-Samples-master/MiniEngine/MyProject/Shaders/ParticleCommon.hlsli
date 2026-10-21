@@ -19,6 +19,9 @@ struct Particle
 #define PARTICLE_FLAG_ALIVE 0x1u
 #define PARTICLE_GROUP_SIZE 64
 
+#define PARTICLE_ARGS_SIMULATE_DISPATCH 0
+#define PARTICLE_ARGS_DRAW 16
+
 // uint to float4(Color)
 float4 UnpackColor(uint c)
 {

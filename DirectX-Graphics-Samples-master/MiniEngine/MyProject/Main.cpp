@@ -75,7 +75,7 @@ void MyProject::Startup( void )
     m_CameraController.reset(NewCam);
 
     // Setup your data
-    m_Particles.InitializePool(Particles::Mode::AliveDirect , 100000);
+    m_Particles.InitializePool(Particles::Mode::AliveIndirect , 100000);
     m_Particles.InitializeEmitter(Vector3(0.f, 0.f, 0.f), EmitterParams());
 }
 
