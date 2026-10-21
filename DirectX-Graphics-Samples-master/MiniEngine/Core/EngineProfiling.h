@@ -29,6 +29,9 @@ namespace EngineProfiling
     void DisplayPerfGraph(GraphicsContext& Text);
     void Display(TextContext& Text, float x, float y, float w, float h);
     bool IsPaused();
+
+    float GetGpuTimeLast(const std::wstring& name);
+    float GetFrameTimeLast();
 }
 
 #ifdef RELEASE

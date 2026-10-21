@@ -360,6 +360,22 @@ public:
     static float GetTotalGpuTime(void) { return s_TotalGpuTime.GetAvg(); }
     static float GetFrameDelta(void) { return s_FrameDelta.GetAvg(); }
 
+    NestedTimingTree* Find(const wstring& name)
+    {
+        if (m_Name == name)
+            return this;
+        for (auto child : m_Children)
+        {
+            if (NestedTimingTree* found = child->Find(name))
+                return found;
+        }
+
+        return nullptr;
+    }
+    static NestedTimingTree* FindNode(const wstring& name) { return sm_RootScope.Find(name); }
+    static float GetFrameDeltaLast(void) { return s_FrameDelta.GetLast(); }
+    float GetGpuLast(void) const { return m_GpuTime.GetLast(); }
+
     static void Display( TextContext& Text, float x )
     {
         float curX = Text.GetCursorX();
@@ -449,6 +465,17 @@ namespace EngineProfiling
     bool IsPaused()
     {
         return Paused;
+    }
+
+    float GetGpuTimeLast(const wstring& name)
+    {
+        NestedTimingTree* node = NestedTimingTree::FindNode(name);
+        return node ? node->GetGpuLast() : -1.0f;
+    }
+
+    float GetFrameTimeLast()
+    {
+        return 1000.0f * NestedTimingTree::GetFrameDeltaLast();
     }
 
     void DisplayFrameRate( TextContext& Text )

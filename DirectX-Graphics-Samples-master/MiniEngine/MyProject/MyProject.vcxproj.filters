@@ -60,6 +60,9 @@
     <ClCompile Include="AliveListPool.cpp">
       <Filter>Particle\ParticlePool</Filter>
     </ClCompile>
+    <ClCompile Include="ProfileRecorder.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
@@ -90,6 +93,7 @@
     <ClInclude Include="ParticleTypes.h">
       <Filter>Particle</Filter>
     </ClInclude>
+    <ClInclude Include="ProfileRecorder.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Logo.png">
