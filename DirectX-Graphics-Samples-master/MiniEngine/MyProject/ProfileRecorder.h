@@ -14,7 +14,8 @@ public:
 	float		GetProgress() const;
 	const char* GetStateText() const;
 
-	bool AppendCSV(const std::string& path, const std::string& mode, const std::string& tag, uint32_t maxParticles) const;
+	bool AppendCSV(const std::string& path, const std::string& condHeader, const std::string& condValues,
+		const std::string& tag, uint32_t maxParticles) const;
 
 private:
 	enum class State { Idle, Warmup, Recording };

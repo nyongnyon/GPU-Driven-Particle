@@ -23,40 +23,28 @@ using namespace Math;
 using namespace Particles;
 
 
-void ParticleSystem::InitializePool(Particles::Mode mode, uint32_t maxParticles)
+void ParticleSystem::Initialize(const ParticleSettings& settings, const Math::Vector3& emitterPosition)
 {
-	if (IsSlotFamily(mode))
-	{
-		m_ParticlePool = std::move(std::make_unique<SlotReusePool>(mode));
-	}
-	else if (IsAliveFamily(mode))
-	{
-		m_ParticlePool = std::move(std::make_unique<AliveListPool>(mode));
-	}
+	m_Settings = Sanitize(settings);
+	CreatePool(m_Settings.mode, m_Settings.maxParticles);
 
-	m_ParticlePool->Initialize(maxParticles);
-}
-
-void ParticleSystem::InitializeEmitter(const Math::Vector3& emitterPosition, const EmitterParams& emitParams)
-{
-	m_ParticleEmitter.emitParams = emitParams;
 	m_ParticleEmitter.position = emitterPosition;
+	m_ParticleEmitter.emitParams = BuildEmitterParams(m_Settings);
 	m_ParticleEmitter.ResetBurst();
 }
 
+
 void ParticleSystem::Shutdown()
 {
-	m_ParticlePool->Shutdown();
+	DestroyPool();
 }
 
 void ParticleSystem::Update(float deltaT)
 {
-	// if has request mode change
-	ApplyPendingMode();
-	ApplyPendingRecreate();
+	// if has PendingChange
+	ApplyPending();
 
 	EmitRequest request = m_ParticleEmitter.RequestEmit(deltaT);
-
 	request.emitCount = min(request.emitCount, m_ParticlePool->GetMaxParticles());
 
 	m_ParticlePool->Update(deltaT, request);
@@ -67,16 +55,11 @@ void ParticleSystem::Render(GraphicsContext& gfx, const Math::Camera& cam)
 	m_ParticlePool->Render(gfx, cam);
 }
 
-void ParticleSystem::RequestMode(Particles::Mode mode)
+void ParticleSystem::ApplySettings(const ParticleSettings& settings, bool forceRecreate)
 {
-	if (mode != m_ParticlePool->GetMode())
-		m_PendingMode = mode;
-}
-
-void ParticleSystem::RequestRecreate(uint32_t maxParticles)
-{
-	m_RecreateRequested = true;
-	m_PendingMax = maxParticles;
+	m_PendingSettings = Sanitize(settings);
+	m_HasPending = true;
+	m_ForceRecreate = m_ForceRecreate || forceRecreate;
 }
 
 Particles::ParticleStat ParticleSystem::GetParticleStat()
@@ -85,15 +68,12 @@ Particles::ParticleStat ParticleSystem::GetParticleStat()
 	stat.mode = m_ParticlePool->GetMode();
 	stat.maxParticles = m_ParticlePool->GetMaxParticles();
 
-	if (stat.mode == Particles::Mode::SlotReuse ||
-		stat.mode == Particles::Mode::SlotReuseFlags )
+	if (IsSlotFamily(stat.mode))
 	{
 		stat.counters = static_cast<SlotReusePool*>(m_ParticlePool.get())->GetCounterSnapshot();
 	}
 
-	else if (stat.mode == Particles::Mode::AliveDirect
-		|| stat.mode == Particles::Mode::AliveIndirect
-		|| stat.mode == Particles::Mode::AliveIndirectWave)
+	else if (IsAliveFamily(stat.mode))
 	{
 		stat.counters = static_cast<AliveListPool*>(m_ParticlePool.get())->GetCounterSnapshot();
 	}
@@ -101,41 +81,54 @@ Particles::ParticleStat ParticleSystem::GetParticleStat()
 	return stat;
 }
 
-void ParticleSystem::ApplyPendingMode()
+void ParticleSystem::ApplyPending()
 {
-	if (m_PendingMode == Mode::NONE)
+	if (!m_HasPending)
 		return;
 
-	Mode curMode = m_ParticlePool->GetMode();
+	const ParticleSettings& cur = m_Settings;
+	const ParticleSettings& next = m_PendingSettings;
 
-	if (IsSameFamily(curMode, m_PendingMode))
+	// 1) Pool : [reset 요청, MAX 변경, 계열 변경] 중 하나라면 새로 만든다
+	const bool recreate = m_ForceRecreate
+		|| next.maxParticles != cur.maxParticles
+		|| !IsSameFamily(next.mode, cur.mode);
+
+	if (recreate)
 	{
-		m_ParticlePool->SetMode(m_PendingMode);
+		DestroyPool();
+		CreatePool(next.mode, next.maxParticles);
 	}
-	else
+	else if (next.mode != cur.mode)
 	{
-		const uint32_t maxParticles = m_ParticlePool->GetMaxParticles();
-		Graphics::g_CommandManager.IdleGPU(); // GPU의 사용이 끝날때까지 대기...
-		m_ParticlePool->Shutdown();
-		m_ParticlePool.reset();
-		InitializePool(m_PendingMode, maxParticles); // 새로운 풀 생성
-	}	
+		m_ParticlePool->SetMode(next.mode);	// 같은 계열: 버퍼는 그대로, 모드만
+	}
 
-	m_PendingMode = Mode::NONE;
+	// 2) Emitter : 비율 -> 개수 변환 MAX에 따라 달라지므로 항상 다시 계산
+	m_ParticleEmitter.emitParams = BuildEmitterParams(next);
+	m_ParticleEmitter.ResetBurst();
+
+	m_Settings = next;
+	m_HasPending = false;
+	m_ForceRecreate = false;
 }
 
-void ParticleSystem::ApplyPendingRecreate()
+void ParticleSystem::CreatePool(Particles::Mode mode, uint32_t maxParticles)
 {
-	if (!m_RecreateRequested)
+	if (IsSlotFamily(mode))
+		m_ParticlePool = std::make_unique<SlotReusePool>(mode);
+	else
+		m_ParticlePool = std::make_unique<AliveListPool>(mode);
+
+	m_ParticlePool->Initialize(maxParticles);
+}
+
+void ParticleSystem::DestroyPool()
+{
+	if (!m_ParticlePool)
 		return;
 
-	Mode mode = m_ParticlePool->GetMode();
-
-	Graphics::g_CommandManager.IdleGPU(); // GPU의 사용이 끝날때까지 대기...
+	Graphics::g_CommandManager.IdleGPU();	// 이전 프레임들이 아직 버퍼를 쓰고 있을 수 있음
 	m_ParticlePool->Shutdown();
-	m_ParticlePool.reset();
-	InitializePool(mode, m_PendingMax);
-
-	m_RecreateRequested = false;
+	m_ParticlePool.reset();					// 새 풀을 만들기 전에 먼저 지움 (VRAM 두 배 방지)
 }
-

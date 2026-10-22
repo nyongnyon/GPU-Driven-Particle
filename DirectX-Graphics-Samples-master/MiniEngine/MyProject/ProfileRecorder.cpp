@@ -112,7 +112,8 @@ ProfileRecorder::Summary ProfileRecorder::Summarize(std::vector<float> v)
 	return s;
 }
 
-bool ProfileRecorder::AppendCSV(const std::string& path, const std::string& mode, const std::string& tag, uint32_t maxParticles) const
+bool ProfileRecorder::AppendCSV(const std::string& path, const std::string& condHeader, const std::string& condValues,
+	const std::string& tag, uint32_t maxParticles) const
 {
 	const bool needHeader = !std::ifstream(path).good();
 
@@ -122,7 +123,7 @@ bool ProfileRecorder::AppendCSV(const std::string& path, const std::string& mode
 
 	if (needHeader)
 	{
-		file << "mode,tag,maxParticles,frames,aliveAvg,aliveRatio,frameMs_mean,frameMs_median";
+		file << condHeader << ",tag,maxParticles,frames,aliveAvg,aliveRatio,frameMs_mean,frameMs_median";
 		for (const auto& name : m_Names)
 		{
 			const std::string n = ToNarrow(name);
@@ -140,7 +141,7 @@ bool ProfileRecorder::AppendCSV(const std::string& path, const std::string& mode
 
 	file.setf(std::ios::fixed);
 	file.precision(4);
-	file << mode << ',' << tag << ',' << maxParticles << ',' << m_FrameMs.size() << ','
+	file << condValues << ',' << tag << ',' << maxParticles << ',' << m_FrameMs.size() << ','
 		<< aliveAvg << ',' << aliveRatio << ',' << frame.mean << ',' << frame.median;
 
 	for (const auto& samples : m_Samples)

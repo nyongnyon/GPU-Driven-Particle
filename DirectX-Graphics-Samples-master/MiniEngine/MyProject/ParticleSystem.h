@@ -6,6 +6,7 @@
 #include "ParticleTypes.h"
 #include "ParticlePool.h"
 #include "ParticleEmitter.h"
+#include "ParticleSettings.h"
 
 class GraphicsContext;
 namespace Math { class Camera; }
@@ -13,33 +14,34 @@ namespace Math { class Camera; }
 class ParticleSystem
 {
 public:
-	void InitializePool(Particles::Mode mode, uint32_t maxParticles = 0);
-	void InitializeEmitter(const Math::Vector3& emitterPosition, const EmitterParams& emitParams);
+	void Initialize(const ParticleSettings& settings, const Math::Vector3& emitterPosition);
 	void Shutdown();
 
 	void Update(float deltaT);
 	void Render(GraphicsContext& gfx, const Math::Camera& cam);
 
-	void RequestMode(Particles::Mode mode);
-	void RequestRecreate(uint32_t maxParticles);
+	void ApplySettings(const ParticleSettings& settings, bool forceRecreate = false);
 
-	Particles::ParticleStat GetParticleStat();
+	const ParticleSettings& GetSettings() const { return m_Settings; }
+	Particles::ParticleStat	GetParticleStat();
 
 private:
-	void ApplyPendingMode();
-	void ApplyPendingRecreate();
+	void ApplyPending();
+	void CreatePool(Particles::Mode mode, uint32_t maxParticles);
+	void DestroyPool();
 
 	// -----------------------
 	//		Particle Setting
 	// -----------------------
-	std::unique_ptr<ParticlePool> m_ParticlePool;
-	ParticleEmitter				  m_ParticleEmitter;
+	std::unique_ptr<ParticlePool>	m_ParticlePool;
+	ParticleEmitter					m_ParticleEmitter;
 
 	// -----------------------
-	//	For Pending Request
+	//		Settings
 	// -----------------------
-	bool						  m_RecreateRequested = false;
-	uint32_t					  m_PendingMax = 0;
-	Particles::Mode				  m_PendingMode = Particles::Mode::NONE;
+	ParticleSettings	m_Settings;
+	ParticleSettings	m_PendingSettings;
+	bool				m_HasPending = false;
+	bool				m_ForceRecreate = false;
 };
 
