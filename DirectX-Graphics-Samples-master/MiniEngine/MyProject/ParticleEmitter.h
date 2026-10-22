@@ -12,6 +12,9 @@ struct EmitterParams
 	float minSize = 0.03f;
 	float maxSize = 0.05f;
 	float emitRate = 30000.f;
+
+	uint32_t burstCount = 0;
+	float	 burstInterval = 5.f;
 };
 
 struct EmitRequest
@@ -24,9 +27,11 @@ struct EmitRequest
 class ParticleEmitter
 {
 public:
-	float			ComputeEmitCount(float deltaT);
+	uint32_t		ComputeEmitCount(float deltaT);
 	EmitRequest		RequestEmit(float deltaT);
 
+	uint32_t		ComputeBurstCount(float deltaT);
+	void			ResetBurst();
 
 	Math::Vector3	position;		// TEMP
 	EmitterParams	emitParams;
@@ -34,4 +39,5 @@ public:
 
 private:
 	float			m_EmitCarry = 0.f;
+	double			m_BurstTimer = 0;
 };

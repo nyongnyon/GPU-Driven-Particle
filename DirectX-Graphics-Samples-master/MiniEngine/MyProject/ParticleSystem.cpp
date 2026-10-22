@@ -25,11 +25,11 @@ using namespace Particles;
 
 void ParticleSystem::InitializePool(Particles::Mode mode, uint32_t maxParticles)
 {
-	if (mode == Mode::SlotReuse || mode == Mode::SlotReuseFlags)
+	if (IsSlotFamily(mode))
 	{
 		m_ParticlePool = std::move(std::make_unique<SlotReusePool>(mode));
 	}
-	else if (mode == Mode::AliveDirect || mode == Mode::AliveIndirect)
+	else if (IsAliveFamily(mode))
 	{
 		m_ParticlePool = std::move(std::make_unique<AliveListPool>(mode));
 	}
@@ -41,6 +41,7 @@ void ParticleSystem::InitializeEmitter(const Math::Vector3& emitterPosition, con
 {
 	m_ParticleEmitter.emitParams = emitParams;
 	m_ParticleEmitter.position = emitterPosition;
+	m_ParticleEmitter.ResetBurst();
 }
 
 void ParticleSystem::Shutdown()
@@ -52,9 +53,13 @@ void ParticleSystem::Update(float deltaT)
 {
 	// if has request mode change
 	ApplyPendingMode();
+	ApplyPendingRecreate();
 
+	EmitRequest request = m_ParticleEmitter.RequestEmit(deltaT);
 
-	m_ParticlePool->Update(deltaT, m_ParticleEmitter.RequestEmit(deltaT));
+	request.emitCount = min(request.emitCount, m_ParticlePool->GetMaxParticles());
+
+	m_ParticlePool->Update(deltaT, request);
 }
 
 void ParticleSystem::Render(GraphicsContext& gfx, const Math::Camera& cam)
@@ -66,6 +71,12 @@ void ParticleSystem::RequestMode(Particles::Mode mode)
 {
 	if (mode != m_ParticlePool->GetMode())
 		m_PendingMode = mode;
+}
+
+void ParticleSystem::RequestRecreate(uint32_t maxParticles)
+{
+	m_RecreateRequested = true;
+	m_PendingMax = maxParticles;
 }
 
 Particles::ParticleStat ParticleSystem::GetParticleStat()
@@ -81,7 +92,8 @@ Particles::ParticleStat ParticleSystem::GetParticleStat()
 	}
 
 	else if (stat.mode == Particles::Mode::AliveDirect
-		|| stat.mode == Particles::Mode::AliveIndirect)
+		|| stat.mode == Particles::Mode::AliveIndirect
+		|| stat.mode == Particles::Mode::AliveIndirectWave)
 	{
 		stat.counters = static_cast<AliveListPool*>(m_ParticlePool.get())->GetCounterSnapshot();
 	}
@@ -110,5 +122,20 @@ void ParticleSystem::ApplyPendingMode()
 	}	
 
 	m_PendingMode = Mode::NONE;
+}
+
+void ParticleSystem::ApplyPendingRecreate()
+{
+	if (!m_RecreateRequested)
+		return;
+
+	Mode mode = m_ParticlePool->GetMode();
+
+	Graphics::g_CommandManager.IdleGPU(); // GPU의 사용이 끝날때까지 대기...
+	m_ParticlePool->Shutdown();
+	m_ParticlePool.reset();
+	InitializePool(mode, m_PendingMax);
+
+	m_RecreateRequested = false;
 }
 

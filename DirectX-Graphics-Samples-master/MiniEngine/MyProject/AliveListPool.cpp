@@ -18,6 +18,7 @@
 #include "CompiledShaders/ParticleAfterSimAliveCS.h"
 #include "CompiledShaders/ParticleDrawAliveVS.h"
 #include "CompiledShaders/ParticleDrawPS.h"
+#include "CompiledShaders//ParticleSimulateAliveWaveCS.h"
 
 #include <vector>
 #include <algorithm>
@@ -38,10 +39,11 @@ namespace
 	ComputePSO		s_PreSimPSO(L"Particle Alive Pre Sim PSO");
 	ComputePSO		s_SimulatePSO(L"Particle Alive Simulate PSO");
 	ComputePSO		s_AfterSimPSO(L"Particle Alive After Sim PSO");
-	
+	ComputePSO		s_SimulateWavePSO(L"Particle Alive Simulate Wave PSO");
+
 	GraphicsPSO		s_DrawPSO(L"Particle Alive Draw PSO");
 
-	void InitializeSetting(bool indirect)
+	void InitializeSetting()
 	{
 		if (s_Initialized)
 			return;
@@ -85,6 +87,11 @@ namespace
 		s_AfterSimPSO.SetComputeShader(g_pParticleAfterSimAliveCS, sizeof(g_pParticleAfterSimAliveCS));
 		s_AfterSimPSO.Finalize();
 		
+		s_SimulateWavePSO.SetRootSignature(s_ComputeSig);
+		s_SimulateWavePSO.SetComputeShader(g_pParticleSimulateAliveWaveCS, sizeof(g_pParticleSimulateAliveWaveCS));
+		s_SimulateWavePSO.Finalize();
+
+
 		// 2) Draw PSO
 		s_DrawPSO.SetRootSignature(s_DrawSig);
 		s_DrawPSO.SetRasterizerState(RasterizerTwoSided);
@@ -97,6 +104,8 @@ namespace
 		s_DrawPSO.Finalize();
 
 		s_Initialized = true;
+
+
 	}
 };
 
@@ -104,7 +113,7 @@ namespace
 void AliveListPool::Initialize(uint32_t maxParticles)
 {
 	if (!s_Initialized)
-		InitializeSetting(IsIndirect());
+		InitializeSetting();
 
 	CreateBuffers(maxParticles);
 
@@ -181,7 +190,7 @@ void AliveListPool::Update(float deltaT, const EmitRequest& emitRequest)
 	// -------------------------
 	//		BEGIN COMPUTE
 	// -------------------------
-	ComputeContext& ctx = ComputeContext::Begin(L"Particle Update (Alive)");
+	ComputeContext& ctx = ComputeContext::Begin(L"Particle Update");
 
 	alignas(16) static const uint32_t kZeros[4] = { 0, 0, 0, 0 };
 	ctx.WriteBuffer(m_CounterBuffer, kEmitCount, kZeros, 8); // EmitCount, AfterSim ÃÊ±âÈ­
@@ -212,7 +221,7 @@ void AliveListPool::Update(float deltaT, const EmitRequest& emitRequest)
 
 	// 3) Emit
 	{
-		ScopedTimer _t(L"Particle Emit (Alive)", ctx);
+		ScopedTimer _t(L"Particle Emit", ctx);
 		if (emitRequest.emitCount > 0)
 		{
 			ctx.SetPipelineState(s_EmitPSO);
@@ -226,34 +235,42 @@ void AliveListPool::Update(float deltaT, const EmitRequest& emitRequest)
 	{
 		{
 			// 4-1) PreSim
-			ScopedTimer _t(L"Particle PreSimulate (Alive)", ctx);
+			ScopedTimer _t(L"Particle ArgsPre", ctx);
 			ctx.SetPipelineState(s_PreSimPSO);
 			ctx.Dispatch(1, 1, 1);
 		}
 		ctx.TransitionResource(m_IndirectArgsBuffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, true);
-
+	
+		if (m_Mode == Particles::Mode::AliveIndirect)
 		{
 			// 4-2) Simulate
-			ScopedTimer _t(L"Particle Simulate (Alive)", ctx);
+			ScopedTimer _t(L"Particle Simulate", ctx);
 			ctx.SetPipelineState(s_SimulatePSO);
+			ctx.DispatchIndirect(m_IndirectArgsBuffer, kSimulateDispatchArgs);
+		}
+		else if (m_Mode == Particles::Mode::AliveIndirectWave)
+		{
+			// 4-2) Simulate
+			ScopedTimer _t(L"Particle Simulate", ctx);
+			ctx.SetPipelineState(s_SimulateWavePSO);
 			ctx.DispatchIndirect(m_IndirectArgsBuffer, kSimulateDispatchArgs);
 		}
 	}
 	else
 	{
 		// 4-1) Simulate
-		ScopedTimer _t(L"Particle Simulate (Alive)", ctx);
+		ScopedTimer _t(L"Particle Simulate", ctx);
 		ctx.SetPipelineState(s_SimulatePSO);
 		ctx.Dispatch1D(m_MaxParticles, sThreadGroupSize);
 	}	
 	InsertUAVBarriers(ctx);
 
 	if (IsIndirect())
-		ctx.TransitionResource(m_IndirectArgsBuffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, true);
+		ctx.TransitionResource(m_IndirectArgsBuffer, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
 
 	// 5) AfterSimulate
 	{
-		ScopedTimer _t(L"Particle After Sim (Alive)", ctx);
+		ScopedTimer _t(L"Particle AfterSim", ctx);
 		ctx.SetPipelineState(s_AfterSimPSO);
 		ctx.Dispatch(1, 1, 1);
 	}
@@ -305,12 +322,12 @@ void AliveListPool::Render(GraphicsContext& gfx, const Math::Camera& cam)
 
 	if (IsIndirect())
 	{
-		ScopedTimer _t(L"Particle Draw (Alive)", gfx);
+		ScopedTimer _t(L"Particle Draw", gfx);
 		gfx.DrawIndirect(m_IndirectArgsBuffer, kDrawArgs);
 	}
 	else
 	{
-		ScopedTimer _t(L"Particle Draw (Alive)", gfx);
+		ScopedTimer _t(L"Particle Draw", gfx);
 		gfx.DrawInstanced(6, m_MaxParticles);
 	}
 }

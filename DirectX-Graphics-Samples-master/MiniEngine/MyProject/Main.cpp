@@ -21,8 +21,22 @@
 #include "ParticleSystem.h"
 #include "ParticleUtility.h"
 
+#include "ProfileRecorder.h"
+
 using namespace GameCore;
 using namespace Graphics;
+
+static const char* ModeName(Particles::Mode mode)
+{
+    switch (mode)
+    {
+    case Particles::Mode::SlotReuse:      return "SlotReuse";
+    case Particles::Mode::SlotReuseFlags: return "SlotReuseFlags";
+    case Particles::Mode::AliveDirect:    return "AliveDirect";
+    case Particles::Mode::AliveIndirect:  return "AliveIndirect";
+    default:                              return "None";
+    }
+}
 
 class MyProject : public GameCore::IGameApp
 {
@@ -52,6 +66,13 @@ private:
     std::unique_ptr<CameraController> m_CameraController;
 
     ParticleSystem  m_Particles;
+    EmitterParams   m_EmitterParams = {};
+
+
+    ProfileRecorder m_Recorder;
+    int  m_RecordFrames = 1000;
+    char m_RecordTag[32] = "Tag your Own Name";
+    bool m_LastSaveOk = true;
 };
 
 CREATE_APPLICATION( MyProject )
@@ -80,9 +101,17 @@ void MyProject::Startup( void )
 
     m_Particles.InitializePool(Particles::Mode::AliveIndirect , maxParticleCount);
 
-    EmitterParams emitParams = {};
-    emitParams.emitRate = Particles::ComputeEmitRateByAliveRatio(0.17f, emitParams.minLife, emitParams.maxLife, maxParticleCount);
-    m_Particles.InitializeEmitter(Vector3(0.f, 0.f, 0.f), emitParams);
+    m_EmitterParams.emitRate = Particles::ComputeEmitRateByAliveRatio(0.5f, m_EmitterParams.minLife, m_EmitterParams.maxLife, maxParticleCount);
+    m_Particles.InitializeEmitter(Vector3(0.f, 0.f, 0.f), m_EmitterParams);
+
+    // Setup Profile Recorder
+    m_Recorder.SetTimers({
+    L"Particle Update",     // 컴퓨트 전체
+    L"Particle Emit",
+    L"Particle ArgsPre",    // Indirect만 있음
+    L"Particle Simulate",
+    L"Particle AfterSim",   // Alive 계열만 있음
+    L"Particle Draw" });
 }
 
 void MyProject::Cleanup( void )
@@ -109,6 +138,10 @@ void MyProject::Update( float deltaT )
 
 
     m_Particles.Update(deltaT);
+
+    const Particles::ParticleStat stat = m_Particles.GetParticleStat();
+    if (m_Recorder.Tick(stat.counters.aliveCount))
+        m_LastSaveOk = m_Recorder.AppendCSV("ParticleProfile.csv", ModeName(stat.mode), m_RecordTag, stat.maxParticles);
 
 
     UpdateImGui(deltaT);
@@ -152,7 +185,8 @@ void MyProject::UpdateImGui( float deltaT )
         ImGui::RadioButton("SlotReuse", &update, 1); ImGui::SameLine();
         ImGui::RadioButton("SlotReuseFlags", &update, 2);
         ImGui::RadioButton("AliveDirect", &update, 3); ImGui::SameLine();
-        ImGui::RadioButton("AliveIndirect", &update, 4); 
+        ImGui::RadioButton("AliveIndirect", &update, 4); ImGui::SameLine();
+        ImGui::RadioButton("AliveIndirectWave", &update, 5);
 
         if (update != (int)stat.mode)
             m_Particles.RequestMode(Particles::Mode(update));
@@ -162,13 +196,62 @@ void MyProject::UpdateImGui( float deltaT )
         ImGui::SeparatorText("Change Stat");
 
         static float ratio = 0.5f;
+        static int maxParticle = 1'000'000;
+
+        ImGui::InputInt("MaxParticle (Reset when Button Pressed", &maxParticle, 1, 10'000);
+
         if (ImGui::SliderFloat("Ratio", &ratio, 0.0f, 1.0f))
         {
-            EmitterParams emitParams = {};
-            emitParams.emitRate = Particles::ComputeEmitRateByAliveRatio(ratio, emitParams.minLife, emitParams.maxLife, stat.maxParticles);
-            m_Particles.InitializeEmitter(Vector3(0.f, 0.f, 0.f), emitParams);
-
+            m_EmitterParams.emitRate = Particles::ComputeEmitRateByAliveRatio(ratio, m_EmitterParams.minLife, m_EmitterParams.maxLife, stat.maxParticles);
+            m_Particles.InitializeEmitter(Vector3(0.f, 0.f, 0.f), m_EmitterParams);
         }
+
+        if (ImGui::Button("Reset buffer"))
+        {
+            m_EmitterParams.emitRate = Particles::ComputeEmitRateByAliveRatio(ratio, m_EmitterParams.minLife, m_EmitterParams.maxLife, maxParticle);
+            m_Particles.RequestRecreate(maxParticle);
+            m_Particles.InitializeEmitter(Vector3(0.f, 0.f, 0.f), m_EmitterParams);
+        }
+
+        ImGui::SeparatorText("Emit");
+
+        static float steadyRatio = 0.5f;
+        static float burstRatio = 0.0f;
+
+        // 슬라이더를 "놓았을 때"만 반영
+        bool apply = false;
+        ImGui::SliderFloat("Steady ratio", &steadyRatio, 0.f, 1.f, "%.2f");
+        apply |= ImGui::IsItemDeactivatedAfterEdit();
+        ImGui::SliderFloat("Burst ratio", &burstRatio, 0.f, 1.f, "%.2f");
+        apply |= ImGui::IsItemDeactivatedAfterEdit();
+        ImGui::SliderFloat("Burst interval (s)", &m_EmitterParams.burstInterval, 0.5f, 5.f, "%.1f");
+        apply |= ImGui::IsItemDeactivatedAfterEdit();
+        ImGui::SliderFloat("Life min (s)", &m_EmitterParams.minLife, 0.1f, 5.f, "%.1f");
+        apply |= ImGui::IsItemDeactivatedAfterEdit();
+        ImGui::SliderFloat("Life max (s)", &m_EmitterParams.maxLife, 0.1f, 5.f, "%.1f");
+        apply |= ImGui::IsItemDeactivatedAfterEdit();
+
+        if (apply)
+        {
+            m_EmitterParams.maxLife = max(m_EmitterParams.maxLife, m_EmitterParams.minLife);
+            m_EmitterParams.emitRate = Particles::ComputeEmitRateByAliveRatio(
+                steadyRatio, m_EmitterParams.minLife, m_EmitterParams.maxLife, maxParticle);
+            m_EmitterParams.burstCount = uint32_t(burstRatio * float(maxParticle));
+
+            m_Particles.InitializeEmitter(Vector3(0.f, 0.f, 0.f), m_EmitterParams);
+        }
+    }
+
+    {
+        ImGui::SeparatorText("Record");
+        ImGui::InputText("Tag", m_RecordTag, sizeof(m_RecordTag));
+        ImGui::InputInt("Frames", &m_RecordFrames);
+        if (m_Recorder.IsBusy())
+            ImGui::ProgressBar(m_Recorder.GetProgress(), ImVec2(-1.f, 0.f), m_Recorder.GetStateText());
+        else if (ImGui::Button("Record"))
+            m_Recorder.Start(300, (uint32_t)(m_RecordFrames > 0 ? m_RecordFrames : 1));
+        if (!m_LastSaveOk)
+            ImGui::TextColored(ImVec4(1.f, 0.3f, 0.3f, 1.f), "CSV save failed (open in Excel?)");
     }
 
 

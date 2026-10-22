@@ -28,7 +28,9 @@ private:
 	bool	VerifyInitialState();
 	void	InsertUAVBarriers(ComputeContext& ctx);
 
-	bool	IsIndirect() const { return m_Mode == Particles::Mode::AliveIndirect; }
+	bool	IsIndirect() const { 
+		return m_Mode == Particles::Mode::AliveIndirect || m_Mode == Particles::Mode::AliveIndirectWave; 
+	}
 	StructuredBuffer& AliveIn() { return m_AliveListBuffer[m_AliveCurrent]; }
 	StructuredBuffer& AliveOut() { return m_AliveListBuffer[1 - m_AliveCurrent]; }
 

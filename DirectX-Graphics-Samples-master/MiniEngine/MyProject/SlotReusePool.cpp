@@ -213,7 +213,7 @@ void SlotReusePool::Update(float deltaT, const EmitRequest& emitRequest)
 	// 4) Simulate
 	{
 		const bool useFlagArray = (m_Mode == Mode::SlotReuseFlags);
-		ScopedTimer _t(useFlagArray ? L"Particle Simulate Flags" : L"Particle Simulate", ctx);
+		ScopedTimer _t(L"Particle Simulate", ctx);
 		ctx.SetPipelineState(useFlagArray ? s_SimulateFlagsPSO : s_SimulatePSO);
 		ctx.Dispatch1D(m_MaxParticles, sThreadGroupSize);
 	}

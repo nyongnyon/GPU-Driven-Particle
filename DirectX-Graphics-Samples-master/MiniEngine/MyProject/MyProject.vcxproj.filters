@@ -93,7 +93,9 @@
     <ClInclude Include="ParticleTypes.h">
       <Filter>Particle</Filter>
     </ClInclude>
-    <ClInclude Include="ProfileRecorder.h" />
+    <ClInclude Include="ProfileRecorder.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="Logo.png">
@@ -177,6 +179,9 @@
       <Filter>Shaders\Particle</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ParticlePreSim.hlsl">
+      <Filter>Shaders\Particle</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleSimulateAliveWaveCS.hlsl">
       <Filter>Shaders\Particle</Filter>
     </FxCompile>
   </ItemGroup>
