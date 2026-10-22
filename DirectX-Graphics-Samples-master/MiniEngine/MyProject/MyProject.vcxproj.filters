@@ -66,6 +66,9 @@
     <ClCompile Include="ParticleSettings.cpp">
       <Filter>Particle\ParticleSystem</Filter>
     </ClCompile>
+    <ClCompile Include="CompactionPool.cpp">
+      <Filter>Particle\ParticlePool</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
@@ -101,6 +104,9 @@
     </ClInclude>
     <ClInclude Include="ParticleSettings.h">
       <Filter>Particle\ParticleSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="CompactionPool.h">
+      <Filter>Particle\ParticlePool</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

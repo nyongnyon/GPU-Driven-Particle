@@ -68,6 +68,7 @@ namespace Particles
 		AliveDirect = 3,
 		AliveIndirect = 4,
 		AliveIndirectWave = 5,
+		Compaction = 6,
 	};
 
 	inline bool IsSlotFamily(Mode m) { return m == Mode::SlotReuse || m == Mode::SlotReuseFlags; }

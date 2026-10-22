@@ -56,6 +56,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="AliveListPool.h" />
+    <ClInclude Include="CompactionPool.h" />
     <ClInclude Include="DebugDraw.h" />
     <ClInclude Include="ParticleEmitter.h" />
     <ClInclude Include="ParticlePool.h" />
@@ -70,6 +71,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AliveListPool.cpp" />
+    <ClCompile Include="CompactionPool.cpp" />
     <ClCompile Include="DebugDraw.cpp" />
     <ClCompile Include="ParticleEmitter.cpp" />
     <ClCompile Include="ParticlePool.cpp" />
