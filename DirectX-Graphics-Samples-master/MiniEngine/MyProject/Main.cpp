@@ -123,7 +123,7 @@ void MyProject::Update( float deltaT )
     DebugDraw::AddLine(Vector3(-1.f, 0.f, 0.f), Vector3(1.f, 0.f, 0.f), Color(1.f, 1.f, 1.f));
 
 
-    m_Particles.Update(deltaT);
+    m_Particles.Update(m_FixedDt ? 1.0f / 60.f : deltaT);
 
     const Particles::ParticleStat stat = m_Particles.GetParticleStat();
     if (m_Recorder.Tick(stat.counters.aliveCount))

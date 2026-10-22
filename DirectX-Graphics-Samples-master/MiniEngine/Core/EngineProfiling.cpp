@@ -283,6 +283,8 @@ public:
 
     void StartTiming( CommandContext* Context )
     {
+        m_LastStartFrame = (uint32_t)Graphics::GetFrameCount();
+
         m_StartTick = SystemTime::GetCurrentTick();
         if (Context == nullptr)
             return;
@@ -376,6 +378,8 @@ public:
     static float GetFrameDeltaLast(void) { return s_FrameDelta.GetLast(); }
     float GetGpuLast(void) const { return m_GpuTime.GetLast(); }
 
+    bool RanRecently(void) const { return m_LastStartFrame + 2 >= (uint32_t)Graphics::GetFrameCount(); }
+
     static void Display( TextContext& Text, float x )
     {
         float curX = Text.GetCursorX();
@@ -423,6 +427,7 @@ private:
     static NestedTimingTree sm_RootScope;
     static NestedTimingTree* sm_CurrentNode;
     static NestedTimingTree* sm_SelectedScope;
+    uint32_t m_LastStartFrame = 0;
 
     static bool sm_CursorOnGraph;
 
@@ -470,7 +475,9 @@ namespace EngineProfiling
     float GetGpuTimeLast(const wstring& name)
     {
         NestedTimingTree* node = NestedTimingTree::FindNode(name);
-        return node ? node->GetGpuLast() : -1.0f;
+        if (node == nullptr || !node->RanRecently())    // 없거나, 최근 2프레임 안에 안 돈 타이머
+            return -1.0f;
+        return node->GetGpuLast();
     }
 
     float GetFrameTimeLast()
