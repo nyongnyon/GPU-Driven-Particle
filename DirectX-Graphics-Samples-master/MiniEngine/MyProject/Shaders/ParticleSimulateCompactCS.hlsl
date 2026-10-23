@@ -29,5 +29,5 @@ void main( uint3 DTid : SV_DispatchThreadID )
     aliveBase = WaveReadLaneFirst(aliveBase);
     
     if (survived)
-        Particles[aliveBase + aliveRank] = p;
+        ParticlesOut[aliveBase + aliveRank] = p;
 }

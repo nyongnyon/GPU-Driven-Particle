@@ -75,8 +75,16 @@ namespace Particles
 	inline bool IsDefault(Mode m) { return m == Mode::Default; }
 	inline bool IsSlotFamily(Mode m) { return m == Mode::SlotReuse || m == Mode::SlotReuseFlags; }
 	inline bool IsAliveFamily(Mode m) { return m == Mode::AliveDirect || m == Mode::AliveIndirect || m == Mode::AliveIndirectWave; }
+	inline bool IsCompactFamily(Mode m) { return m == Mode::Compaction; }
+
+
+	inline bool IsValidMode(Mode m) { return IsDefault(m) || IsSlotFamily(m) || IsAliveFamily(m); }
+
+
 	inline bool IsSameFamily(Mode a, Mode b) 
 	{
+		if (a == b)
+			return true;
 		return (IsSlotFamily(a) && IsSlotFamily(b)) || (IsAliveFamily(a) && IsAliveFamily(b));
 	}
 

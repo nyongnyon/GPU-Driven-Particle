@@ -18,7 +18,12 @@ public:
 	void Update(float deltaT, const EmitRequest& emitRequest) override;
 	void Render(GraphicsContext& gfx, const Math::Camera& cam) override;
 
-	Particles::CounterSnapshot GetCounterSnapshot() const { return m_LastCounters; }
+	Particles::CounterSnapshot GetCounterSnapshot()
+	{
+		Particles::CounterSnapshot s = m_LastCounters;
+		s.deadCount = m_MaxParticles - s.aliveCount;
+		return s;
+	}
 
 private:
 #ifndef RELEASE

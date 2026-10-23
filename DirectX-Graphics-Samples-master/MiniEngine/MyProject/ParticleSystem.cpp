@@ -16,6 +16,7 @@
 #include "SlotReusePool.h"
 #include "AliveListPool.h"
 #include "FullScanPool.h"
+#include "CompactionPool.h"
 
 #include <algorithm>
 
@@ -69,7 +70,12 @@ Particles::ParticleStat ParticleSystem::GetParticleStat()
 	stat.mode = m_ParticlePool->GetMode();
 	stat.maxParticles = m_ParticlePool->GetMaxParticles();
 
-	if (IsSlotFamily(stat.mode))
+	if (IsDefault(stat.mode))
+	{
+		stat.counters = static_cast<FullScanPool*>(m_ParticlePool.get())->GetCounterSnapshot();
+	}
+
+	else if (IsSlotFamily(stat.mode))
 	{
 		stat.counters = static_cast<SlotReusePool*>(m_ParticlePool.get())->GetCounterSnapshot();
 	}

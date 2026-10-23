@@ -25,7 +25,7 @@ namespace Particles
 {
 	ParticleSettings Sanitize(ParticleSettings s)
 	{
-		if (!IsSlotFamily(s.mode) && !IsAliveFamily(s.mode))
+		if (!IsValidMode(s.mode) && !IsSlotFamily(s.mode) && !IsAliveFamily(s.mode))
 			s.mode = Mode::AliveIndirect;
 
 		s.maxParticles = ClampValue(s.maxParticles, 64u, kMaxDispatchParticles);
@@ -52,11 +52,13 @@ namespace Particles
 	{
 		switch (mode)
 		{
+		case Mode::Default:			return "FullScan";
 		case Mode::SlotReuse:			return "SlotReuse";
 		case Mode::SlotReuseFlags:		return "SlotReuseFlags";
 		case Mode::AliveDirect:			return "AliveDirect";
 		case Mode::AliveIndirect:		return "AliveIndirect";
 		case Mode::AliveIndirectWave:	return "AliveIndirectWave";
+		case Mode::Compaction:			return "Compaction";
 		default:						return "None";
 		}
 	}

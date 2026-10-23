@@ -41,11 +41,6 @@ namespace
 	GraphicsPSO		s_DrawPSO(L"Particle Slot Reuse Draw PSO");
 	GraphicsPSO		s_DrawFlagsPSO(L"Particle Slot Reuse Flags Draw PSO");
 
-	// TEMP Values
-	//NumVar g_TargetAliveRatio("Particles/Target alive ratio", 0.5f, 0.05f, 0.95f, 0.05f);
-	//NumVar g_MinLife("Particles/Life min", 1.0f, 0.1f, 10.f, 0.1f);
-	//NumVar g_MaxLife("Particles/Life max", 3.0f, 0.1f, 10.f, 0.1f);
-	//NumVar g_Size("Particles/Size", 0.03f, 0.005f, 1.f, 0.005f);
 
 	void InitializeSetting()
 	{
