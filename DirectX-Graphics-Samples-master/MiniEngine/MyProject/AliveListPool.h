@@ -11,7 +11,6 @@ public:
 		: ParticlePool(mode) {}
 
 public:
-	// IParticlePool을(를) 통해 상속됨
 	void Initialize(uint32_t maxParticles) override;
 	void CreateBuffers(uint32_t maxParticles) override;
 	void Shutdown() override;

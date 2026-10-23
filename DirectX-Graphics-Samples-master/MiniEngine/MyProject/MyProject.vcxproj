@@ -58,6 +58,7 @@
     <ClInclude Include="AliveListPool.h" />
     <ClInclude Include="CompactionPool.h" />
     <ClInclude Include="DebugDraw.h" />
+    <ClInclude Include="FullScanPool.h" />
     <ClInclude Include="ParticleEmitter.h" />
     <ClInclude Include="ParticlePool.h" />
     <ClInclude Include="ParticleSettings.h" />
@@ -73,6 +74,7 @@
     <ClCompile Include="AliveListPool.cpp" />
     <ClCompile Include="CompactionPool.cpp" />
     <ClCompile Include="DebugDraw.cpp" />
+    <ClCompile Include="FullScanPool.cpp" />
     <ClCompile Include="ParticleEmitter.cpp" />
     <ClCompile Include="ParticlePool.cpp" />
     <ClCompile Include="Main.cpp" />
@@ -172,6 +174,14 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.2</ShaderModel>
     </FxCompile>
+    <FxCompile Include="Shaders\ParticleEmitFullScanCS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">6.2</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.2</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.2</ShaderModel>
+    </FxCompile>
     <FxCompile Include="Shaders\ParticleSimulateCompactCS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Compute</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">6.2</ShaderModel>
@@ -221,6 +231,14 @@
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.2</ShaderModel>
     </FxCompile>
     <FxCompile Include="Shaders\ParticleSimulateFlagsCS.hlsl" />
+    <FxCompile Include="Shaders\ParticleSimulateFullScanCS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">6.2</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.2</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.2</ShaderModel>
+    </FxCompile>
     <FxCompile Include="Shaders\TexturedQuadPS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Pixel</ShaderType>

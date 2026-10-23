@@ -15,6 +15,7 @@
 #include "ParticlePool.h"
 #include "SlotReusePool.h"
 #include "AliveListPool.h"
+#include "FullScanPool.h"
 
 #include <algorithm>
 
@@ -115,7 +116,9 @@ void ParticleSystem::ApplyPending()
 
 void ParticleSystem::CreatePool(Particles::Mode mode, uint32_t maxParticles)
 {
-	if (IsSlotFamily(mode))
+	if (IsDefault(mode))
+		m_ParticlePool = std::make_unique<FullScanPool>();
+	else if (IsSlotFamily(mode))
 		m_ParticlePool = std::make_unique<SlotReusePool>(mode);
 	else
 		m_ParticlePool = std::make_unique<AliveListPool>(mode);

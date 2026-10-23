@@ -63,14 +63,16 @@ namespace Particles
 	enum class Mode : uint32_t
 	{
 		NONE = 0,
-		SlotReuse = 1,
-		SlotReuseFlags = 2,
-		AliveDirect = 3,
-		AliveIndirect = 4,
-		AliveIndirectWave = 5,
-		Compaction = 6,
+		Default = 1,
+		SlotReuse = 2,
+		SlotReuseFlags = 3,
+		AliveDirect = 4,
+		AliveIndirect = 5,
+		AliveIndirectWave = 6,
+		Compaction = 7,
 	};
 
+	inline bool IsDefault(Mode m) { return m == Mode::Default; }
 	inline bool IsSlotFamily(Mode m) { return m == Mode::SlotReuse || m == Mode::SlotReuseFlags; }
 	inline bool IsAliveFamily(Mode m) { return m == Mode::AliveDirect || m == Mode::AliveIndirect || m == Mode::AliveIndirectWave; }
 	inline bool IsSameFamily(Mode a, Mode b) 

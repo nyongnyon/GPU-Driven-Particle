@@ -85,7 +85,7 @@ void MyProject::Startup( void )
     m_CameraController.reset(NewCam);
 
     // Setup your data
-    m_Draft.mode = Particles::Mode::AliveIndirect;
+    m_Draft.mode = Particles::Mode::Default;
     m_Draft.maxParticles = 1'000'000;
     m_Draft.steadyRatio = 0.5f;
     m_Particles.Initialize(m_Draft, Vector3(0.f, 0.f, 0.f));
@@ -119,8 +119,8 @@ void MyProject::Update( float deltaT )
     // Update something
     m_CameraController->Update(deltaT);
 
-    DebugDraw::AddLine(Vector3(0.f, 0.f, 0.f), Vector3(0.f, 5.f, 0.f), Color(1.f, 1.f, 1.f));
-    DebugDraw::AddLine(Vector3(-1.f, 0.f, 0.f), Vector3(1.f, 0.f, 0.f), Color(1.f, 1.f, 1.f));
+    //DebugDraw::AddLine(Vector3(0.f, 0.f, 0.f), Vector3(0.f, 5.f, 0.f), Color(1.f, 1.f, 1.f));
+    //DebugDraw::AddLine(Vector3(-1.f, 0.f, 0.f), Vector3(1.f, 0.f, 0.f), Color(1.f, 1.f, 1.f));
 
 
     m_Particles.Update(m_FixedDt ? 1.0f / 60.f : deltaT);
@@ -176,11 +176,12 @@ void MyProject::UpdateImGui( float deltaT )
 
         // Mode
         int mode = (int)m_Draft.mode;
-        ImGui::RadioButton("SlotReuse", &mode, 1); ImGui::SameLine();
-        ImGui::RadioButton("SlotReuseFlags", &mode, 2);
-        ImGui::RadioButton("AliveDirect", &mode, 3); ImGui::SameLine();
-        ImGui::RadioButton("AliveIndirect", &mode, 4); ImGui::SameLine();
-        ImGui::RadioButton("AliveIndirectWave", &mode, 5);
+        ImGui::RadioButton("FullScan", &mode, 1);
+        ImGui::RadioButton("SlotReuse", &mode, 2); ImGui::SameLine();
+        ImGui::RadioButton("SlotReuseFlags", &mode, 3);
+        ImGui::RadioButton("AliveDirect", &mode, 4); ImGui::SameLine();
+        ImGui::RadioButton("AliveIndirect", &mode, 5); ImGui::SameLine();
+        ImGui::RadioButton("AliveIndirectWave", &mode, 6);
         m_Draft.mode = Particles::Mode(mode);
 
         // Max particles
