@@ -6,6 +6,8 @@
 #include "ParticleTypes.h"
 #include "ParticlePool.h"
 #include "ParticleEmitter.h"
+#include "ParticleRenderer.h"
+#include "ParticleMaterial.h"
 #include "ParticleSettings.h"
 
 class GraphicsContext;
@@ -23,10 +25,12 @@ public:
 	void ApplySettings(const ParticleSettings& settings, bool forceRecreate = false);
 
 	const ParticleSettings& GetSettings() const { return m_Settings; }
+	ParticleMaterial&		GetMaterial() { return m_ParticleMaterial; }
 	Particles::ParticleStat	GetParticleStat();
 
 private:
 	void ApplyPending();
+	void ApplyRenderSettings(const ParticleSettings& settings);
 	void CreatePool(Particles::Mode mode, uint32_t maxParticles);
 	void DestroyPool();
 
@@ -35,6 +39,8 @@ private:
 	// -----------------------
 	std::unique_ptr<ParticlePool>	m_ParticlePool;
 	ParticleEmitter					m_ParticleEmitter;
+	ParticleRenderer				m_ParticleRenderer;
+	ParticleMaterial				m_ParticleMaterial;
 
 	// -----------------------
 	//		Settings

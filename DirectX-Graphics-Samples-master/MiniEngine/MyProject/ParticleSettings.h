@@ -4,6 +4,7 @@
 #include <string>
 #include "ParticleTypes.h"
 #include "ParticleEmitter.h"
+#include "ParticleREnderTypes.h"
 
 // ImGui에서 바꾸는 측정 조건을 전부 한곳에 모은 것
 struct ParticleSettings
@@ -18,6 +19,9 @@ struct ParticleSettings
 	float	burstInterval = 2.0f;	// 초 (시뮬레이션 시간)
 	float	minLife = 1.0f;
 	float	maxLife = 3.0f;
+
+	Particles::ParticleTechnique technique = Particles::ParticleTechnique::Additive;
+
 
 	bool operator==(const ParticleSettings& o) const;
 	bool operator!=(const ParticleSettings& o) const { return !(*this == o); }

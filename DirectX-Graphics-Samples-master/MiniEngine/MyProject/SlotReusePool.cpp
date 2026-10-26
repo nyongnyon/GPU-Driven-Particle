@@ -227,30 +227,46 @@ void SlotReusePool::Update(float deltaT, const EmitRequest& emitRequest)
 	++m_FrameIndex;
 }
 
-void SlotReusePool::Render(GraphicsContext& gfx, const Math::Camera& cam)
+//void SlotReusePool::Render(GraphicsContext& gfx, const Math::Camera& cam)
+//{
+//	gfx.TransitionResource(m_ParticleBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+//	gfx.TransitionResource(m_AliveFlagBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+//	const bool useFlagArray = (m_Mode == Mode::SlotReuseFlags);
+//
+//	DrawConstants dc = {};
+//	XMStoreFloat4x4(&dc.viewProj, cam.GetViewProjMatrix());
+//	XMStoreFloat4(&dc.camRight, cam.GetRightVec());
+//	dc.camRight.w = 0.f;
+//	XMStoreFloat4(&dc.camUp, cam.GetUpVec());
+//	dc.camUp.w = 0.f;
+//
+//	gfx.SetRootSignature(s_DrawSig);
+//	gfx.SetPipelineState(useFlagArray ? s_DrawFlagsPSO : s_DrawPSO);
+//	gfx.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+//	gfx.SetDynamicConstantBufferView(kDrawCBVs, sizeof(dc), &dc);
+//
+//	const D3D12_CPU_DESCRIPTOR_HANDLE srvs[2] = { m_ParticleBuffer.GetSRV(), m_AliveFlagBuffer.GetSRV() };
+//	gfx.SetDynamicDescriptors(kDrawSRVs, 0, 2, srvs);
+//
+//	ScopedTimer _t(L"Particle Draw", gfx);
+//	gfx.DrawInstanced(6, m_MaxParticles);
+//}
+
+Particles::DrawInput SlotReusePool::PrepareDraw(GraphicsContext& gfx)
 {
 	gfx.TransitionResource(m_ParticleBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	gfx.TransitionResource(m_AliveFlagBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	const bool useFlagArray = (m_Mode == Mode::SlotReuseFlags);
 
-	DrawConstants dc = {};
-	XMStoreFloat4x4(&dc.viewProj, cam.GetViewProjMatrix());
-	XMStoreFloat4(&dc.camRight, cam.GetRightVec());
-	dc.camRight.w = 0.f;
-	XMStoreFloat4(&dc.camUp, cam.GetUpVec());
-	dc.camUp.w = 0.f;
-
-	gfx.SetRootSignature(s_DrawSig);
-	gfx.SetPipelineState(useFlagArray ? s_DrawFlagsPSO : s_DrawPSO);
-	gfx.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	gfx.SetDynamicConstantBufferView(kDrawCBVs, sizeof(dc), &dc);
-
-	const D3D12_CPU_DESCRIPTOR_HANDLE srvs[2] = { m_ParticleBuffer.GetSRV(), m_AliveFlagBuffer.GetSRV() };
-	gfx.SetDynamicDescriptors(kDrawSRVs, 0, 2, srvs);
-
-	ScopedTimer _t(L"Particle Draw", gfx);
-	gfx.DrawInstanced(6, m_MaxParticles);
+	DrawInput in;
+	in.source = (m_Mode == Mode::SlotReuseFlags) ? DrawSource::SlotReuseFlags : DrawSource::SlotReuse;
+	in.srvs[0] = m_ParticleBuffer.GetSRV();		// t0
+	in.srvs[1] = m_AliveFlagBuffer.GetSRV();	// t1 (SlotReuse VS는 안 읽지만 기존과 동일하게 바인딩)
+	in.numSrvs = 2;
+	in.maxParticle = m_MaxParticles;
+	return in;
 }
+
+
 
 bool SlotReusePool::VerifyInitialState()
 {

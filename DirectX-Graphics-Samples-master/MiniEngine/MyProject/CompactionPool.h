@@ -17,7 +17,8 @@ public:
 	void Shutdown() override;
 
 	void Update(float deltaT, const EmitRequest& emitRequest) override;
-	void Render(GraphicsContext& gfx, const Math::Camera& cam) override;
+	//void Render(GraphicsContext& gfx, const Math::Camera& cam) override;
+	Particles::DrawInput PrepareDraw(GraphicsContext& gfx) override;
 
 	Particles::CounterSnapshot GetCounterSnapshot() const { return m_LastCounters; }
 

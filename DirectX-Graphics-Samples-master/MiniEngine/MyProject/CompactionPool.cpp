@@ -237,28 +237,35 @@ void CompactionPool::Update(float deltaT, const EmitRequest& emitRequest)
 	m_Current = 1 - m_Current;
 }
 
-void CompactionPool::Render(GraphicsContext& gfx, const Math::Camera& cam)
+
+//void CompactionPool::Render(GraphicsContext& gfx, const Math::Camera& cam)
+//{
+//	gfx.TransitionResource(Current(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+//	gfx.TransitionResource(m_IndirectArgsBuffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+//
+//	DrawConstants dc = {};
+//	XMStoreFloat4x4(&dc.viewProj, cam.GetViewProjMatrix());
+//	XMStoreFloat4(&dc.camRight, cam.GetRightVec());
+//	dc.camRight.w = 0.f;
+//	XMStoreFloat4(&dc.camUp, cam.GetUpVec());
+//	dc.camUp.w = 0.f;
+//
+//	gfx.SetRootSignature(s_DrawSig);
+//	gfx.SetPipelineState(s_DrawPSO);
+//	gfx.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+//	gfx.SetDynamicConstantBufferView(kDrawCBVs, sizeof(dc), &dc);
+//
+//	const D3D12_CPU_DESCRIPTOR_HANDLE srvs[1] = { Current().GetSRV() };	// t0
+//	gfx.SetDynamicDescriptors(kDrawSRVs, 0, 1, srvs);
+//
+//	ScopedTimer _t(L"Particle Draw", gfx);
+//	gfx.DrawIndirect(m_IndirectArgsBuffer, kDrawArgs);
+//}
+
+
+Particles::DrawInput CompactionPool::PrepareDraw(GraphicsContext& gfx)
 {
-	gfx.TransitionResource(Current(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	gfx.TransitionResource(m_IndirectArgsBuffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
-
-	DrawConstants dc = {};
-	XMStoreFloat4x4(&dc.viewProj, cam.GetViewProjMatrix());
-	XMStoreFloat4(&dc.camRight, cam.GetRightVec());
-	dc.camRight.w = 0.f;
-	XMStoreFloat4(&dc.camUp, cam.GetUpVec());
-	dc.camUp.w = 0.f;
-
-	gfx.SetRootSignature(s_DrawSig);
-	gfx.SetPipelineState(s_DrawPSO);
-	gfx.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	gfx.SetDynamicConstantBufferView(kDrawCBVs, sizeof(dc), &dc);
-
-	const D3D12_CPU_DESCRIPTOR_HANDLE srvs[1] = { Current().GetSRV() };	// t0
-	gfx.SetDynamicDescriptors(kDrawSRVs, 0, 1, srvs);
-
-	ScopedTimer _t(L"Particle Draw", gfx);
-	gfx.DrawIndirect(m_IndirectArgsBuffer, kDrawArgs);
+	return Particles::DrawInput();
 }
 
 bool CompactionPool::VerifyInitialState()

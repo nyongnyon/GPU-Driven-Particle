@@ -30,6 +30,9 @@
     <Filter Include="Particle\Emitter">
       <UniqueIdentifier>{1c2093a9-1b54-4860-a89e-ea0bac92f009}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Particle\Renderer">
+      <UniqueIdentifier>{a1efbe82-e5a6-4217-a840-d8bc0abbbf8e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -71,6 +74,15 @@
     </ClCompile>
     <ClCompile Include="FullScanPool.cpp">
       <Filter>Particle\ParticlePool</Filter>
+    </ClCompile>
+    <ClCompile Include="ParticleRenderer.cpp">
+      <Filter>Particle\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderTechnique.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ParticleMaterial.cpp">
+      <Filter>Particle</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -114,6 +126,18 @@
     <ClInclude Include="FullScanPool.h">
       <Filter>Particle\ParticlePool</Filter>
     </ClInclude>
+    <ClInclude Include="ParticleRenderer.h">
+      <Filter>Particle\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="ParticleRenderTypes.h">
+      <Filter>Particle</Filter>
+    </ClInclude>
+    <ClInclude Include="ParticleMaterial.h">
+      <Filter>Particle</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderTechnique.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="Logo.png">
@@ -150,6 +174,9 @@
       <Filter>Shaders\Particle</Filter>
     </None>
     <None Include="Shaders\ParticleDrawCommon.hlsli">
+      <Filter>Shaders\Particle</Filter>
+    </None>
+    <None Include="Shaders\ParticleShading.hlsli">
       <Filter>Shaders\Particle</Filter>
     </None>
   </ItemGroup>
@@ -215,6 +242,15 @@
       <Filter>Shaders\Particle</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ParticleSimulateFullScanCS.hlsl">
+      <Filter>Shaders\Particle</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleWBOITPS.hlsl">
+      <Filter>Shaders\Particle</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleWBOITCompositePS.hlsl">
+      <Filter>Shaders\Particle</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleFullscreenVS.hlsl">
       <Filter>Shaders\Particle</Filter>
     </FxCompile>
   </ItemGroup>

@@ -198,24 +198,36 @@ void FullScanPool::Update(float deltaT, const EmitRequest& emitRequest)
 	++m_FrameIndex;
 }
 
-void FullScanPool::Render(GraphicsContext& gfx, const Math::Camera& cam)
+//void FullScanPool::Render(GraphicsContext& gfx, const Math::Camera& cam)
+//{
+//	gfx.TransitionResource(m_ParticleBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, true);
+//
+//	DrawConstants dc = {};
+//	XMStoreFloat4x4(&dc.viewProj, cam.GetViewProjMatrix());
+//	XMStoreFloat4(&dc.camRight, cam.GetRightVec());	dc.camRight.w = 0.f;
+//	XMStoreFloat4(&dc.camUp, cam.GetUpVec());		dc.camUp.w = 0.f;
+//
+//	gfx.SetRootSignature(s_DrawSig);
+//	gfx.SetPipelineState(s_DrawPSO);
+//	gfx.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+//	gfx.SetDynamicConstantBufferView(kDrawCBVs, sizeof(dc), &dc);
+//
+//	gfx.SetDynamicDescriptor(kDrawSRVs, 0, m_ParticleBuffer.GetSRV());
+//
+//	ScopedTimer _t(L"Particle Draw", gfx);
+//	gfx.DrawInstanced(6, m_MaxParticles);
+//}
+
+Particles::DrawInput FullScanPool::PrepareDraw(GraphicsContext& gfx)
 {
 	gfx.TransitionResource(m_ParticleBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, true);
 
-	DrawConstants dc = {};
-	XMStoreFloat4x4(&dc.viewProj, cam.GetViewProjMatrix());
-	XMStoreFloat4(&dc.camRight, cam.GetRightVec());	dc.camRight.w = 0.f;
-	XMStoreFloat4(&dc.camUp, cam.GetUpVec());		dc.camUp.w = 0.f;
-
-	gfx.SetRootSignature(s_DrawSig);
-	gfx.SetPipelineState(s_DrawPSO);
-	gfx.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	gfx.SetDynamicConstantBufferView(kDrawCBVs, sizeof(dc), &dc);
-
-	gfx.SetDynamicDescriptor(kDrawSRVs, 0, m_ParticleBuffer.GetSRV());
-
-	ScopedTimer _t(L"Particle Draw", gfx);
-	gfx.DrawInstanced(6, m_MaxParticles);
+	DrawInput in;
+	in.source = DrawSource::FullScan;
+	in.srvs[0] = m_ParticleBuffer.GetSRV();		// t0
+	in.numSrvs = 1;
+	in.maxParticle = m_MaxParticles;
+	return in;
 }
 
 #ifndef RELEASE

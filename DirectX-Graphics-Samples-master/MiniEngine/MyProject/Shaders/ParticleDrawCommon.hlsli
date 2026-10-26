@@ -1,13 +1,13 @@
 #include "ParticleCommon.hlsli"
+
+StructuredBuffer<Particle> Particles : register(t0);
+
 cbuffer DrawConstants : register(b0)
 {
     float4x4 ViewProj;
     float4 CamRight;
     float4 CamUp;
 };
-
-StructuredBuffer<Particle> Particles : register(t0);
-
 
 struct VSOutput
 {

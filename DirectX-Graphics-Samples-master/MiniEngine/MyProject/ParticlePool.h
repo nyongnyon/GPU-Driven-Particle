@@ -2,6 +2,7 @@
 
 #include "VectorMath.h"
 #include "ParticleTypes.h"
+#include "ParticleRenderTypes.h"
 
 class GraphicsContext;
 struct EmitRequest;
@@ -20,8 +21,9 @@ public:
 	virtual void Shutdown() = 0;
 
 	virtual void Update(float deltaT, const EmitRequest& emitRequest) = 0;
-	virtual void Render(GraphicsContext& gfx, const Math::Camera& cam) = 0;
-	
+	//virtual void Render(GraphicsContext& gfx, const Math::Camera& cam) = 0;
+	virtual Particles::DrawInput PrepareDraw(GraphicsContext& gfx) = 0;
+
 	void				SetMode(Particles::Mode mode) { m_Mode = mode; }
 	Particles::Mode		GetMode() const { return m_Mode; }
 	uint32_t			GetMaxParticles() const { return m_MaxParticles; }

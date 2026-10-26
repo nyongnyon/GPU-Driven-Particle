@@ -72,6 +72,7 @@ namespace Particles
 		Compaction = 7,
 	};
 
+
 	inline bool IsDefault(Mode m) { return m == Mode::Default; }
 	inline bool IsSlotFamily(Mode m) { return m == Mode::SlotReuse || m == Mode::SlotReuseFlags; }
 	inline bool IsAliveFamily(Mode m) { return m == Mode::AliveDirect || m == Mode::AliveIndirect || m == Mode::AliveIndirectWave; }

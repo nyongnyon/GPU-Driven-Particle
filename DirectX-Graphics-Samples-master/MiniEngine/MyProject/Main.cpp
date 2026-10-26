@@ -90,14 +90,17 @@ void MyProject::Startup( void )
     m_Draft.steadyRatio = 0.5f;
     m_Particles.Initialize(m_Draft, Vector3(0.f, 0.f, 0.f));
 
-    // Setup Profile Recorder
+    // (선택) 스프라이트 텍스처. 경로는 TexturedQuad::Load에 넘기는 것과 같은 기준
+    // m_Particles.GetMaterial().LoadAlbedo(L"Assets/Textures/smoke.png");
+
     m_Recorder.SetTimers({
-    L"Particle Update",     // 컴퓨트 전체
+    L"Particle Update",
     L"Particle Emit",
-    L"Particle ArgsPre",    // Indirect만 있음
+    L"Particle ArgsPre",
     L"Particle Simulate",
-    L"Particle AfterSim",   // Alive 계열만 있음
-    L"Particle Draw" });
+    L"Particle AfterSim",
+    L"Particle Draw",
+    L"Particle Composite" });   // 추가 (WBOIT만 있음)
 }
 
 void MyProject::Cleanup( void )
@@ -128,7 +131,7 @@ void MyProject::Update( float deltaT )
     const Particles::ParticleStat stat = m_Particles.GetParticleStat();
     if (m_Recorder.Tick(stat.counters.aliveCount))
     {
-        m_LastSaveOk = m_Recorder.AppendCSV("ParticleProfile_v2.csv",
+        m_LastSaveOk = m_Recorder.AppendCSV("ParticleProfile_v3.csv",
             Particles::SettingsCsvHeader(), Particles::SettingsCsvValues(m_Particles.GetSettings()),
             m_RecordTag, stat.maxParticles);
     }
@@ -200,6 +203,30 @@ void MyProject::UpdateImGui( float deltaT )
         ImGui::SliderFloat("Burst interval (s)", &m_Draft.burstInterval, 0.5f, 5.f, "%.1f");
         ImGui::SliderFloat("Life min (s)", &m_Draft.minLife, 0.1f, 5.f, "%.1f");
         ImGui::SliderFloat("Life max (s)", &m_Draft.maxLife, 0.1f, 5.f, "%.1f");
+
+        // Render
+        ImGui::SeparatorText("Render");
+        int tech = (int)m_Draft.technique;
+        ImGui::RadioButton("Additive", &tech, (int)Particles::ParticleTechnique::Additive); ImGui::SameLine();
+        ImGui::RadioButton("Premultiplied", &tech, (int)Particles::ParticleTechnique::PremultipliedAlpha); ImGui::SameLine();
+        ImGui::RadioButton("WBOIT", &tech, (int)Particles::ParticleTechnique::WeightedOIT);
+        m_Draft.technique = (Particles::ParticleTechnique)tech;
+
+        // WBOIT는 깊이 테스트를 항상 켜므로 체크박스를 잠근다
+        const bool depthForced = (m_Draft.technique == Particles::ParticleTechnique::WeightedOIT);
+        ImGui::BeginDisabled(depthForced);
+        ImGui::EndDisabled();
+
+        // 텍스처는 Apply 없이 즉시 반영 (CSV 조건에는 안 들어감)
+        ParticleMaterial& mat = m_Particles.GetMaterial();
+        bool useTex = (mat.constants.features & Particles::kFeatureTexture) != 0;
+        ImGui::BeginDisabled(!mat.albedo.IsValid());
+        if (ImGui::Checkbox("Texture", &useTex))
+        {
+            if (useTex) mat.constants.features |= Particles::kFeatureTexture;
+            else        mat.constants.features &= ~(uint32_t)Particles::kFeatureTexture;
+        }
+        ImGui::EndDisabled();
 
         // 측정 조건이 의도와 달라지는 경우 경고
         if (m_Draft.steadyRatio + m_Draft.burstRatio > 1.f)

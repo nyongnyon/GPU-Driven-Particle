@@ -27,7 +27,10 @@ using namespace Particles;
 
 void ParticleSystem::Initialize(const ParticleSettings& settings, const Math::Vector3& emitterPosition)
 {
+
 	m_Settings = Sanitize(settings);
+
+	m_ParticleRenderer.Initialize();
 	CreatePool(m_Settings.mode, m_Settings.maxParticles);
 
 	m_ParticleEmitter.position = emitterPosition;
@@ -39,6 +42,9 @@ void ParticleSystem::Initialize(const ParticleSettings& settings, const Math::Ve
 void ParticleSystem::Shutdown()
 {
 	DestroyPool();
+	m_ParticleMaterial.ClearAlbedo();
+	m_ParticleRenderer.Shutdown();
+
 }
 
 void ParticleSystem::Update(float deltaT)
@@ -54,7 +60,11 @@ void ParticleSystem::Update(float deltaT)
 
 void ParticleSystem::Render(GraphicsContext& gfx, const Math::Camera& cam)
 {
-	m_ParticlePool->Render(gfx, cam);
+	Particles::DrawInput in = m_ParticlePool->PrepareDraw(gfx);
+
+	const ParticleRenderTarget target{ g_SceneColorBuffer, g_SceneDepthBuffer };
+	
+	m_ParticleRenderer.Render(gfx, cam, in, m_ParticleMaterial, target);
 }
 
 void ParticleSystem::ApplySettings(const ParticleSettings& settings, bool forceRecreate)
@@ -115,9 +125,16 @@ void ParticleSystem::ApplyPending()
 	m_ParticleEmitter.emitParams = BuildEmitterParams(next);
 	m_ParticleEmitter.ResetBurst();
 
+	ApplyRenderSettings(next);
+
 	m_Settings = next;
 	m_HasPending = false;
 	m_ForceRecreate = false;
+}
+
+void ParticleSystem::ApplyRenderSettings(const ParticleSettings& settings)
+{
+	m_ParticleRenderer.SetTechnique(settings.technique);
 }
 
 void ParticleSystem::CreatePool(Particles::Mode mode, uint32_t maxParticles)

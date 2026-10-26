@@ -291,46 +291,70 @@ void AliveListPool::Update(float deltaT, const EmitRequest& emitRequest)
 	m_AliveCurrent = 1 - m_AliveCurrent;
 }
 
-void AliveListPool::Render(GraphicsContext& gfx, const Math::Camera& cam)
+//void AliveListPool::Render(GraphicsContext& gfx, const Math::Camera& cam)
+//{
+//	gfx.TransitionResource(m_ParticleBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+//	gfx.TransitionResource(m_CounterBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+//	gfx.TransitionResource(AliveIn(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+//
+//	if (IsIndirect())
+//		gfx.TransitionResource(m_IndirectArgsBuffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+//
+//	DrawConstants dc = {};
+//	XMStoreFloat4x4(&dc.viewProj, cam.GetViewProjMatrix());
+//	XMStoreFloat4(&dc.camRight, cam.GetRightVec());
+//	dc.camRight.w = 0.f;
+//	XMStoreFloat4(&dc.camUp, cam.GetUpVec());
+//	dc.camUp.w = 0.f;
+//
+//	gfx.SetRootSignature(s_DrawSig);
+//	gfx.SetPipelineState(s_DrawPSO);
+//	gfx.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+//	gfx.SetDynamicConstantBufferView(kDrawCBVs, sizeof(dc), &dc);
+//
+//	const D3D12_CPU_DESCRIPTOR_HANDLE srvs[3] =
+//	{
+//		m_ParticleBuffer.GetSRV(), // t0
+//		AliveIn().GetSRV(), // t1
+//		m_CounterBuffer.GetSRV() // t2
+//	};;
+//	gfx.SetDynamicDescriptors(kDrawSRVs, 0, 3, srvs);
+//
+//	if (IsIndirect())
+//	{
+//		ScopedTimer _t(L"Particle Draw", gfx);
+//		gfx.DrawIndirect(m_IndirectArgsBuffer, kDrawArgs);
+//	}
+//	else
+//	{
+//		ScopedTimer _t(L"Particle Draw", gfx);
+//		gfx.DrawInstanced(6, m_MaxParticles);
+//	}
+//}
+
+Particles::DrawInput AliveListPool::PrepareDraw(GraphicsContext& gfx)
 {
 	gfx.TransitionResource(m_ParticleBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	gfx.TransitionResource(m_CounterBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	gfx.TransitionResource(AliveIn(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
+	DrawInput in;
+	in.source = DrawSource::AliveList;
+	in.srvs[0] = m_ParticleBuffer.GetSRV();		// t0
+	in.srvs[1] = AliveIn().GetSRV();			// t1
+	in.srvs[2] = m_CounterBuffer.GetSRV();		// t2
+	in.numSrvs = 3;
+	in.maxParticle = m_MaxParticles;
+
 	if (IsIndirect())
+	{
 		gfx.TransitionResource(m_IndirectArgsBuffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
-
-	DrawConstants dc = {};
-	XMStoreFloat4x4(&dc.viewProj, cam.GetViewProjMatrix());
-	XMStoreFloat4(&dc.camRight, cam.GetRightVec());
-	dc.camRight.w = 0.f;
-	XMStoreFloat4(&dc.camUp, cam.GetUpVec());
-	dc.camUp.w = 0.f;
-
-	gfx.SetRootSignature(s_DrawSig);
-	gfx.SetPipelineState(s_DrawPSO);
-	gfx.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	gfx.SetDynamicConstantBufferView(kDrawCBVs, sizeof(dc), &dc);
-
-	const D3D12_CPU_DESCRIPTOR_HANDLE srvs[3] =
-	{
-		m_ParticleBuffer.GetSRV(), // t0
-		AliveIn().GetSRV(), // t1
-		m_CounterBuffer.GetSRV() // t2
-	};;
-	gfx.SetDynamicDescriptors(kDrawSRVs, 0, 3, srvs);
-
-	if (IsIndirect())
-	{
-		ScopedTimer _t(L"Particle Draw", gfx);
-		gfx.DrawIndirect(m_IndirectArgsBuffer, kDrawArgs);
+		in.indirectBuffer = &m_IndirectArgsBuffer;
+		in.argsOffset = kDrawArgs;
 	}
-	else
-	{
-		ScopedTimer _t(L"Particle Draw", gfx);
-		gfx.DrawInstanced(6, m_MaxParticles);
-	}
+	return in;
 }
+
 
 bool AliveListPool::VerifyInitialState()
 {
