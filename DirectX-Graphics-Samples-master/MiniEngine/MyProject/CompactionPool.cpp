@@ -99,8 +99,8 @@ namespace
 
 void CompactionPool::Initialize(uint32_t maxParticles)
 {
-	if (!s_Initialized)
-		InitializeSetting();
+	//if (!s_Initialized)
+	//	InitializeSetting();
 
 	CreateBuffers(maxParticles);
 

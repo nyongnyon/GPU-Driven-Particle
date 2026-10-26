@@ -79,7 +79,7 @@ void WBOITTechnique::Initialize()
 	m_CompositePSO.SetBlendState(BlendTraditional);
 	m_CompositePSO.SetDepthStencilState(DepthStateDisabled);
 	m_CompositePSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
-	m_CompositePSO.SetRenderTargetFormat(g_SceneColorBuffer.GetFormat(), g_SceneDepthBuffer.GetFormat());
+	m_CompositePSO.SetRenderTargetFormat(g_SceneColorBuffer.GetFormat(), DXGI_FORMAT_UNKNOWN);
 	m_CompositePSO.SetVertexShader(g_pParticleFullscreenVS, sizeof(g_pParticleFullscreenVS));
 	m_CompositePSO.SetPixelShader(g_pParticleWBOITCompositePS, sizeof(g_pParticleWBOITCompositePS));
 	m_CompositePSO.Finalize();
@@ -125,7 +125,7 @@ void WBOITTechnique::EndDraw(GraphicsContext& gfx, const ParticleRenderTarget& t
 	gfx.TransitionResource(m_Accum, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 	gfx.TransitionResource(m_Reveal, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, true);
 
-	gfx.SetRenderTarget(target.color.GetRTV(), target.depth.GetDSV());
+	gfx.SetRenderTarget(target.color.GetRTV());
 
 	ScopedTimer _t(L"Particle Composite", gfx);
 
@@ -137,6 +137,8 @@ void WBOITTechnique::EndDraw(GraphicsContext& gfx, const ParticleRenderTarget& t
 	gfx.SetDynamicDescriptors(kCompositeSRVs, 0, 2, srvs);
 
 	gfx.Draw(3);	// 전체 화면 삼각형
+
+	gfx.SetRenderTarget(target.color.GetRTV(), target.depth.GetDSV());
 }
 
 

@@ -104,6 +104,8 @@ void ParticleRenderer::Render(GraphicsContext& gfx, const Math::Camera& cam,
 	XMStoreFloat4(&dc.camRight, cam.GetRightVec());	dc.camRight.w = 0.f;
 	XMStoreFloat4(&dc.camUp, cam.GetUpVec());		dc.camUp.w = 0.f;
 	
+	gfx.SetDynamicConstantBufferView(kDrawCBV, sizeof(dc), &dc);
+
 	// b1 : material
 	gfx.SetDynamicConstantBufferView(kMaterialCBV, sizeof(material.constants), &material.constants);
 
@@ -140,7 +142,7 @@ void ParticleRenderer::Render(GraphicsContext& gfx, const Math::Camera& cam,
 
 void ParticleRenderer::BuildRootSignature()
 {
-	m_DrawSignature.Reset(kNumDrawRootParams, 1); // sampler 1°³
+	m_DrawSignature.Reset(kNumDrawRootParams, 2); // sampler 1°³
 	m_DrawSignature[kDrawCBV].InitAsConstantBuffer(0, D3D12_SHADER_VISIBILITY_VERTEX);
 	m_DrawSignature[kMaterialCBV].InitAsConstantBuffer(1, D3D12_SHADER_VISIBILITY_ALL);
 	m_DrawSignature[kParticleSRV].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 
@@ -148,7 +150,8 @@ void ParticleRenderer::BuildRootSignature()
 	m_DrawSignature[kMaterialSRV].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, kMaterialSRVBase,
 		kNumMaterialSRVs, D3D12_SHADER_VISIBILITY_PIXEL);
 	m_DrawSignature.InitStaticSampler(0, SamplerLinearWrapDesc, D3D12_SHADER_VISIBILITY_PIXEL);
-	m_DrawSignature.Finalize(L"Particle Draw RootSignature00");
+	m_DrawSignature.InitStaticSampler(1, SamplerLinearClampDesc, D3D12_SHADER_VISIBILITY_PIXEL);
+	m_DrawSignature.Finalize(L"Particle Draw RootSignature");
 }
 
 void ParticleRenderer::CreateTechniques()

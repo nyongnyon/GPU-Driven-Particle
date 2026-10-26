@@ -31,6 +31,7 @@ void ParticleSystem::Initialize(const ParticleSettings& settings, const Math::Ve
 	m_Settings = Sanitize(settings);
 
 	m_ParticleRenderer.Initialize();
+	ApplyRenderSettings(m_Settings);
 	CreatePool(m_Settings.mode, m_Settings.maxParticles);
 
 	m_ParticleEmitter.position = emitterPosition;
@@ -50,12 +51,14 @@ void ParticleSystem::Shutdown()
 void ParticleSystem::Update(float deltaT)
 {
 	// if has PendingChange
+
 	ApplyPending();
 
 	EmitRequest request = m_ParticleEmitter.RequestEmit(deltaT);
 	request.emitCount = min(request.emitCount, m_ParticlePool->GetMaxParticles());
 
-	m_ParticlePool->Update(deltaT, request);
+	if (m_ParticlePool)
+		m_ParticlePool->Update(deltaT, request);
 }
 
 void ParticleSystem::Render(GraphicsContext& gfx, const Math::Camera& cam)
