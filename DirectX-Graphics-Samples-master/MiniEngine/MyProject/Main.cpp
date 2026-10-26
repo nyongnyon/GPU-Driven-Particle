@@ -99,6 +99,7 @@ void MyProject::Startup( void )
     L"Particle ArgsPre",
     L"Particle Simulate",
     L"Particle AfterSim",
+    L"Particle Sort",
     L"Particle Draw",
     L"Particle Composite" });   // 추가 (WBOIT만 있음)
 }
@@ -209,7 +210,8 @@ void MyProject::UpdateImGui( float deltaT )
         int tech = (int)m_Draft.technique;
         ImGui::RadioButton("Additive", &tech, (int)Particles::ParticleTechnique::Additive); ImGui::SameLine();
         ImGui::RadioButton("Premultiplied", &tech, (int)Particles::ParticleTechnique::PremultipliedAlpha); ImGui::SameLine();
-        ImGui::RadioButton("WBOIT", &tech, (int)Particles::ParticleTechnique::WeightedOIT);
+        ImGui::RadioButton("WBOIT", &tech, (int)Particles::ParticleTechnique::WeightedOIT); ImGui::SameLine();
+        ImGui::RadioButton("Sorted Alpha", &tech, (int)Particles::ParticleTechnique::SortedAlpha);
         m_Draft.technique = (Particles::ParticleTechnique)tech;
 
         // WBOIT는 깊이 테스트를 항상 켜므로 체크박스를 잠근다

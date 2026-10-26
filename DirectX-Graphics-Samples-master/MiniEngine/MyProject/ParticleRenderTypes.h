@@ -12,6 +12,7 @@ namespace Particles
 		SlotReuse,
 		SlotReuseFlags,
 		AliveList,
+		Sorted,			// Renderer 내부 전용 : ParticleDepthSorter 결과 (Pool은 사용하지 않음)
 		COUNT
 	};
 
@@ -20,6 +21,7 @@ namespace Particles
 		Additive = 0,
 		PremultipliedAlpha,
 		WeightedOIT,
+		SortedAlpha,	// draw 직전 GPU 깊이 정렬(back-to-front) + alpha blending
 		COUNT
 	};
 
@@ -40,6 +42,7 @@ namespace Particles
 		case ParticleTechnique::Additive: return "Additive";
 		case ParticleTechnique::PremultipliedAlpha: return "PremultipliedAlpha";
 		case ParticleTechnique::WeightedOIT: return "WeightedOIT";
+		case ParticleTechnique::SortedAlpha: return "SortedAlpha";
 		default: return "Unknown";
 		}
 	}

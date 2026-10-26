@@ -78,6 +78,9 @@
     <ClCompile Include="ParticleRenderer.cpp">
       <Filter>Particle\Renderer</Filter>
     </ClCompile>
+    <ClCompile Include="ParticleDepthSorter.cpp">
+      <Filter>Particle\Renderer</Filter>
+    </ClCompile>
     <ClCompile Include="RenderTechnique.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -127,6 +130,9 @@
       <Filter>Particle\ParticlePool</Filter>
     </ClInclude>
     <ClInclude Include="ParticleRenderer.h">
+      <Filter>Particle\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="ParticleDepthSorter.h">
       <Filter>Particle\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="ParticleRenderTypes.h">
@@ -179,6 +185,9 @@
     <None Include="Shaders\ParticleShading.hlsli">
       <Filter>Shaders\Particle</Filter>
     </None>
+    <None Include="Shaders\ParticleSortKeyCommon.hlsli">
+      <Filter>Shaders\Particle</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\DebugLineVS.hlsl">
@@ -206,6 +215,18 @@
       <Filter>Shaders\Particle</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ParticleDrawPS.hlsl">
+      <Filter>Shaders\Particle</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleDrawSortedVS.hlsl">
+      <Filter>Shaders\Particle</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleSortKeyAliveCS.hlsl">
+      <Filter>Shaders\Particle</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleSortKeyReuseCS.hlsl">
+      <Filter>Shaders\Particle</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleSortKeyReuseFlagsCS.hlsl">
       <Filter>Shaders\Particle</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ParticleDrawReuseFlagsVS.hlsl">
