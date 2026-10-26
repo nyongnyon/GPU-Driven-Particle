@@ -194,6 +194,9 @@ namespace Graphics
 
 void Display::Resize(uint32_t width, uint32_t height)
 {
+    if (width == 0 || height == 0)
+        return;
+
     g_CommandManager.IdleGPU();
 
     g_DisplayWidth = width;

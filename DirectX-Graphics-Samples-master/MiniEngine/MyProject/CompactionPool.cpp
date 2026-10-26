@@ -58,10 +58,10 @@ namespace
 		s_ComputeSig.Finalize(L"Particle Compact Compute RootSig");
 
 		// 2) Draw RootSig : t0 = 파티클 하나만 (명단, 카운터 필요 없음)
-		s_DrawSig.Reset(kNumDrawRootParams, 0);
+		/*s_DrawSig.Reset(kNumDrawRootParams, 0);
 		s_DrawSig[kDrawCBVs].InitAsConstantBuffer(0, D3D12_SHADER_VISIBILITY_VERTEX);
 		s_DrawSig[kDrawSRVs].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1, D3D12_SHADER_VISIBILITY_VERTEX);
-		s_DrawSig.Finalize(L"Particle Compact Draw RootSig");
+		s_DrawSig.Finalize(L"Particle Compact Draw RootSig");*/
 
 		// ----------------------
 		//			PSO
@@ -82,15 +82,15 @@ namespace
 		s_AfterSimPSO.SetComputeShader(g_pParticleAfterSimAliveCS, sizeof(g_pParticleAfterSimAliveCS));
 		s_AfterSimPSO.Finalize();
 
-		s_DrawPSO.SetRootSignature(s_DrawSig);
-		s_DrawPSO.SetRasterizerState(RasterizerTwoSided);
-		s_DrawPSO.SetBlendState(BlendAdditive);
-		s_DrawPSO.SetDepthStencilState(DepthStateDisabled);
-		s_DrawPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
-		s_DrawPSO.SetRenderTargetFormat(g_SceneColorBuffer.GetFormat(), DXGI_FORMAT_UNKNOWN);
-		s_DrawPSO.SetVertexShader(g_pParticleDrawCompactVS, sizeof(g_pParticleDrawCompactVS));
-		s_DrawPSO.SetPixelShader(g_pParticleDrawPS, sizeof(g_pParticleDrawPS));
-		s_DrawPSO.Finalize();
+		//s_DrawPSO.SetRootSignature(s_DrawSig);
+		//s_DrawPSO.SetRasterizerState(RasterizerTwoSided);
+		//s_DrawPSO.SetBlendState(BlendAdditive);
+		//s_DrawPSO.SetDepthStencilState(DepthStateDisabled);
+		//s_DrawPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+		//s_DrawPSO.SetRenderTargetFormat(g_SceneColorBuffer.GetFormat(), DXGI_FORMAT_UNKNOWN);
+		//s_DrawPSO.SetVertexShader(g_pParticleDrawCompactVS, sizeof(g_pParticleDrawCompactVS));
+		//s_DrawPSO.SetPixelShader(g_pParticleDrawPS, sizeof(g_pParticleDrawPS));
+		//s_DrawPSO.Finalize();
 
 		s_Initialized = true;
 	}
@@ -99,8 +99,8 @@ namespace
 
 void CompactionPool::Initialize(uint32_t maxParticles)
 {
-	//if (!s_Initialized)
-	//	InitializeSetting();
+	if (!s_Initialized)
+		InitializeSetting();
 
 	CreateBuffers(maxParticles);
 

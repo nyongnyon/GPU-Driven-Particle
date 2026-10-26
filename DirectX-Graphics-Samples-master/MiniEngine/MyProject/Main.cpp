@@ -85,9 +85,11 @@ void MyProject::Startup( void )
     m_CameraController.reset(NewCam);
 
     // Setup your data
-    m_Draft.mode = Particles::Mode::SlotReuse;
+    m_Draft.mode = Particles::Mode::AliveIndirect;
     m_Draft.maxParticles = 1'000'000;
     m_Draft.steadyRatio = 0.5f;
+    m_Draft.technique = Particles::ParticleTechnique::PremultipliedAlpha;
+    //m_Draft.technique = Particles::ParticleTechnique::WeightedOIT;
     m_Particles.Initialize(m_Draft, Vector3(0.f, 0.f, 0.f));
 
     // (선택) 스프라이트 텍스처. 경로는 TexturedQuad::Load에 넘기는 것과 같은 기준

@@ -54,11 +54,11 @@ namespace
 		s_ComputeSig[kComputeUAVs].SetTableRange(1, D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, 1);
 		s_ComputeSig.Finalize(L"Particle Compute RoogSig");
 
-		// 2) Draw RootSig
-		s_DrawSig.Reset(kNumDrawRootParams, 0);
-		s_DrawSig[kDrawCBVs].InitAsConstantBuffer(0, D3D12_SHADER_VISIBILITY_VERTEX);
-		s_DrawSig[kDrawSRVs].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1, D3D12_SHADER_VISIBILITY_VERTEX);
-		s_DrawSig.Finalize(L"Particle Draw RootSig");
+		//// 2) Draw RootSig
+		//s_DrawSig.Reset(kNumDrawRootParams, 0);
+		//s_DrawSig[kDrawCBVs].InitAsConstantBuffer(0, D3D12_SHADER_VISIBILITY_VERTEX);
+		//s_DrawSig[kDrawSRVs].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1, D3D12_SHADER_VISIBILITY_VERTEX);
+		//s_DrawSig.Finalize(L"Particle Draw RootSig");
 
 		// ----------------------
 		//			PSO
@@ -73,15 +73,15 @@ namespace
 		s_SimulatePSO.Finalize();
 
 		// 2) Draw PSO
-		s_DrawPSO.SetRootSignature(s_DrawSig);
-		s_DrawPSO.SetRasterizerState(RasterizerTwoSided);
-		s_DrawPSO.SetBlendState(BlendAdditive);
-		s_DrawPSO.SetDepthStencilState(DepthStateDisabled);
-		s_DrawPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
-		s_DrawPSO.SetRenderTargetFormat(g_SceneColorBuffer.GetFormat(), DXGI_FORMAT_UNKNOWN);
-		s_DrawPSO.SetVertexShader(g_pParticleDrawReuseVS, sizeof(g_pParticleDrawReuseVS));
-		s_DrawPSO.SetPixelShader(g_pParticleDrawPS, sizeof(g_pParticleDrawPS));
-		s_DrawPSO.Finalize();
+		//s_DrawPSO.SetRootSignature(s_DrawSig);
+		//s_DrawPSO.SetRasterizerState(RasterizerTwoSided);
+		//s_DrawPSO.SetBlendState(BlendAdditive);
+		//s_DrawPSO.SetDepthStencilState(DepthStateDisabled);
+		//s_DrawPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+		//s_DrawPSO.SetRenderTargetFormat(g_SceneColorBuffer.GetFormat(), DXGI_FORMAT_UNKNOWN);
+		//s_DrawPSO.SetVertexShader(g_pParticleDrawReuseVS, sizeof(g_pParticleDrawReuseVS));
+		//s_DrawPSO.SetPixelShader(g_pParticleDrawPS, sizeof(g_pParticleDrawPS));
+		//s_DrawPSO.Finalize();
 
 		s_Initialized = true;
 	}
@@ -89,8 +89,8 @@ namespace
 
 void FullScanPool::Initialize(uint32_t maxParticles)
 {
-	//if (!s_Initialized)
-	//	InitializeSetting();
+	if (!s_Initialized)
+		InitializeSetting();
 
 	CreateBuffers(maxParticles);
 }

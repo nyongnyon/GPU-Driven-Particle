@@ -57,11 +57,11 @@ namespace
 		s_ComputeSig[kComputeUAVs].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 4);
 		s_ComputeSig.Finalize(L"Particle Slot Reuse Compute RootSig");
 
-		// 2) Draw Root Sig
-		s_DrawSig.Reset(kNumDrawRootParams, 0);
-		s_DrawSig[kDrawCBVs].InitAsConstantBuffer(0, D3D12_SHADER_VISIBILITY_VERTEX);
-		s_DrawSig[kDrawSRVs].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 2, D3D12_SHADER_VISIBILITY_VERTEX);
-		s_DrawSig.Finalize(L"Particle Slot Reuse Draw RootSig");
+		//// 2) Draw Root Sig
+		//s_DrawSig.Reset(kNumDrawRootParams, 0);
+		//s_DrawSig[kDrawCBVs].InitAsConstantBuffer(0, D3D12_SHADER_VISIBILITY_VERTEX);
+		//s_DrawSig[kDrawSRVs].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 2, D3D12_SHADER_VISIBILITY_VERTEX);
+		//s_DrawSig.Finalize(L"Particle Slot Reuse Draw RootSig");
 
 		// ----------------------
 		//			PSO
@@ -79,7 +79,7 @@ namespace
 		s_SimulateFlagsPSO.SetComputeShader(g_pParticleSimulateFlagsCS, sizeof(g_pParticleSimulateFlagsCS));
 		s_SimulateFlagsPSO.Finalize();
 
-		auto setupDrawPSO = [](GraphicsPSO& pso, const void* vs, size_t vsSize)
+		/*auto setupDrawPSO = [](GraphicsPSO& pso, const void* vs, size_t vsSize)
 			{
 				pso.SetRootSignature(s_DrawSig);
 				pso.SetRasterizerState(RasterizerTwoSided);
@@ -93,7 +93,7 @@ namespace
 			};
 
 		setupDrawPSO(s_DrawPSO, g_pParticleDrawReuseVS, sizeof(g_pParticleDrawReuseVS));
-		setupDrawPSO(s_DrawFlagsPSO, g_pParticleDrawReuseFlagsVS, sizeof(g_pParticleDrawReuseFlagsVS));
+		setupDrawPSO(s_DrawFlagsPSO, g_pParticleDrawReuseFlagsVS, sizeof(g_pParticleDrawReuseFlagsVS));*/
 
 		s_Initialized = true;
 	}
@@ -101,8 +101,8 @@ namespace
 
 void SlotReusePool::Initialize(uint32_t maxParticles)
 {
-	//if (!s_Initialized)
-	//	InitializeSetting();
+	if (!s_Initialized)
+		InitializeSetting();
 
 	CreateBuffers(maxParticles);
 
