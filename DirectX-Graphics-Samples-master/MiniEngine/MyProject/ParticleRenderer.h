@@ -4,6 +4,7 @@
 #include "ParticleRenderTypes.h"
 #include "RenderTechnique.h"
 #include "ParticleDepthSorter.h"
+#include "ParticleTiledRenderer.h"
 #include "VectorMath.h"
 #include "RootSignature.h"
 #include "PipelineState.h"
@@ -50,6 +51,8 @@ private:
 
 	RootSignature		m_DrawSignature;
 	ParticleDepthSorter	m_DepthSorter;		// SortedAlpha 등 RequiresDepthSort() 기법용
+	ParticleTiledRenderer m_TiledRenderer;
+	
 	std::unordered_map<uint32_t, std::unique_ptr<GraphicsPSO>> m_PSOCache;
 	std::unique_ptr<RenderTechnique> m_Techniques[static_cast<uint32_t>(Particles::ParticleTechnique::COUNT)];
 

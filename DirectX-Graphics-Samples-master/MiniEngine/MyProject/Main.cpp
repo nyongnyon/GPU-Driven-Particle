@@ -88,7 +88,7 @@ void MyProject::Startup( void )
     m_Draft.mode = Particles::Mode::AliveIndirect;
     m_Draft.maxParticles = 1'000'000;
     m_Draft.steadyRatio = 0.5f;
-    m_Draft.technique = Particles::ParticleTechnique::WeightedOIT;
+    m_Draft.technique = Particles::ParticleTechnique::TiledAlpha;
     //m_Draft.technique = Particles::ParticleTechnique::WeightedOIT;
     m_Particles.Initialize(m_Draft, Vector3(0.f, 0.f, 0.f));
 

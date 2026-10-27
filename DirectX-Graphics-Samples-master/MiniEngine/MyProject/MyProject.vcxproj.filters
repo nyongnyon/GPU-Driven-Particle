@@ -81,11 +81,14 @@
     <ClCompile Include="ParticleDepthSorter.cpp">
       <Filter>Particle\Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="RenderTechnique.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="ParticleMaterial.cpp">
       <Filter>Particle</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderTechnique.cpp">
+      <Filter>Particle\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="ParticleTiledRenderer.cpp">
+      <Filter>Particle\Renderer</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -142,7 +145,10 @@
       <Filter>Particle</Filter>
     </ClInclude>
     <ClInclude Include="RenderTechnique.h">
-      <Filter>Source Files</Filter>
+      <Filter>Particle\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="ParticleTiledRenderer.h">
+      <Filter>Particle\Renderer</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -272,6 +278,12 @@
       <Filter>Shaders\Particle</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ParticleFullscreenVS.hlsl">
+      <Filter>Shaders\Particle</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleTiledRenderCS.hlsl">
+      <Filter>Shaders\Particle</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleTiledCompositePS.hlsl">
       <Filter>Shaders\Particle</Filter>
     </FxCompile>
   </ItemGroup>

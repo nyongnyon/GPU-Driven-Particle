@@ -64,8 +64,8 @@ void ParticleRenderer::Initialize()
 	BuildRootSignature();
 	CreateTechniques();
 	m_DepthSorter.Initialize();
+	m_TiledRenderer.Initialize();
 	PrewarmPSOs();
-
 	m_Initialized = true;
 }
 
@@ -80,6 +80,8 @@ void ParticleRenderer::Shutdown()
 		}
 	}
 	m_DepthSorter.Shutdown();
+	m_TiledRenderer.Shutdown();
+\
 	m_PSOCache.clear();
 	m_Initialized = false;
 }
@@ -93,6 +95,14 @@ void ParticleRenderer::Render(GraphicsContext& gfx, const Math::Camera& cam,
 
 	if (input.numSrvs == 0 || input.maxParticle == 0)
 		return;
+
+	// TEMP: Tiled Render
+	if (m_Technique == ParticleTechnique::TiledAlpha)
+	{
+		const Particles::DrawInput sorted = m_DepthSorter.Sort(gfx, cam, input);
+		m_TiledRenderer.Render(gfx, cam, sorted, material, target);
+		return;
+	}
 
 	RenderTechnique& tech = GetTechniqueImpl(m_Technique);
 
@@ -134,6 +144,7 @@ void ParticleRenderer::Render(GraphicsContext& gfx, const Math::Camera& cam,
 		GetDefaultTexture(kBlackTransparent2D),	// t6 : 예비
 	};
 	gfx.SetDynamicDescriptors(kMaterialSRV, 0, kNumMaterialSRVs, materialSrvs);
+
 
 	// Draw
 	{
@@ -178,6 +189,10 @@ void ParticleRenderer::CreateTechniques()
 	// ShadeParticle()이 premultiplied (rgb*a, a)를 출력하므로 over 연산 = ONE, INV_SRC_ALPHA
 	m_Techniques[static_cast<uint32_t>(ParticleTechnique::SortedAlpha)] =
 		std::make_unique<SinglePassTechnique>(BlendPreMultiplied, true);
+
+	m_Techniques[static_cast<uint32_t>(ParticleTechnique::TiledAlpha)] =
+		std::make_unique<SinglePassTechnique>(BlendPreMultiplied, true);
+
 
 	for (auto& tech : m_Techniques)
 	{

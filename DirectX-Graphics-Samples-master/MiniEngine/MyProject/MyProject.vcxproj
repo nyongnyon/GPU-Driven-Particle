@@ -67,6 +67,7 @@
     <ClInclude Include="ParticleRenderTypes.h" />
     <ClInclude Include="ParticleSettings.h" />
     <ClInclude Include="ParticleSystem.h" />
+    <ClInclude Include="ParticleTiledRenderer.h" />
     <ClInclude Include="RenderTechnique.h" />
     <ClInclude Include="ParticleTypes.h" />
     <ClInclude Include="ParticleUtility.h" />
@@ -88,6 +89,7 @@
     <ClCompile Include="ParticleRenderer.cpp" />
     <ClCompile Include="ParticleSettings.cpp" />
     <ClCompile Include="ParticleSystem.cpp" />
+    <ClCompile Include="ParticleTiledRenderer.cpp" />
     <ClCompile Include="RenderTechnique.cpp" />
     <ClCompile Include="ParticleUtility.cpp" />
     <ClCompile Include="pch.cpp">
@@ -281,6 +283,19 @@
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">6.2</ShaderModel>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.2</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.2</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleTiledCompositePS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleTiledRenderCS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.2</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">6.2</ShaderModel>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.2</ShaderModel>
     </FxCompile>

@@ -1,5 +1,5 @@
 #pragma once
-
+#include "ParticleTypes.h"
 #include <cstdint>
 
 class ByteAddressBuffer;
@@ -22,6 +22,7 @@ namespace Particles
 		PremultipliedAlpha,
 		WeightedOIT,
 		SortedAlpha,	// draw 직전 GPU 깊이 정렬(back-to-front) + alpha blending
+		TiledAlpha,
 		COUNT
 	};
 
@@ -43,6 +44,7 @@ namespace Particles
 		case ParticleTechnique::PremultipliedAlpha: return "PremultipliedAlpha";
 		case ParticleTechnique::WeightedOIT: return "WeightedOIT";
 		case ParticleTechnique::SortedAlpha: return "SortedAlpha";
+		case ParticleTechnique::TiledAlpha: return "TiledAlpha";
 		default: return "Unknown";
 		}
 	}
