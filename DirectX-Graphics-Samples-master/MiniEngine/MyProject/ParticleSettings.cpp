@@ -29,6 +29,7 @@ bool ParticleSettings::operator==(const ParticleSettings& o) const
 		&& burstInterval == o.burstInterval
 		&& minLife == o.minLife
 		&& maxLife == o.maxLife
+		&& particleSize == o.particleSize
 		&& colorMode == o.colorMode
 		&& SameColor(colorA, o.colorA)
 		&& SameColor(colorB, o.colorB)
@@ -49,6 +50,7 @@ namespace Particles
 		s.burstInterval = ClampValue(s.burstInterval, 1.f / 60.f, 60.f);
 		s.minLife = ClampValue(s.minLife, 0.01f, 60.f);
 		s.maxLife = ClampValue(s.maxLife, s.minLife, 60.f);	// max >= min 보장
+		s.particleSize = ClampValue(s.particleSize, 0.001f, 5.f);
 
 		if (static_cast<uint32_t>(s.colorMode) >= static_cast<uint32_t>(ColorMode::COUNT))
 			s.colorMode = ColorMode::Fixed;
@@ -63,6 +65,7 @@ namespace Particles
 		EmitterParams p;		// 속도, 크기는 기본값 그대로
 		p.minLife = s.minLife;
 		p.maxLife = s.maxLife;
+		p.minSize = p.maxSize = s.particleSize;
 		p.emitRate = ComputeEmitRateByAliveRatio(s.steadyRatio, s.minLife, s.maxLife, s.maxParticles);
 		p.burstCount = uint32_t(s.burstRatio * float(s.maxParticles));
 		p.burstInterval = s.burstInterval;
@@ -104,14 +107,15 @@ namespace Particles
 
 	std::string SettingsCsvHeader()
 	{
-		return "mode,steadyRatio,burstRatio,burstInterval,minLife,maxLife";
+		return "mode,steadyRatio,burstRatio,burstInterval,minLife,maxLife,technique,particleSize,colorMode,colorIntensity";
 	}
 
 	std::string SettingsCsvValues(const ParticleSettings& s)
 	{
-		char buf[160];
-		snprintf(buf, sizeof(buf), "%s,%.2f,%.2f,%.2f,%.2f,%.2f",
-			ModeName(s.mode), s.steadyRatio, s.burstRatio, s.burstInterval, s.minLife, s.maxLife);
+		char buf[256];
+		snprintf(buf, sizeof(buf), "%s,%.2f,%.2f,%.2f,%.2f,%.2f,%s,%.3f,%s,%.2f",
+			ModeName(s.mode), s.steadyRatio, s.burstRatio, s.burstInterval, s.minLife, s.maxLife,
+			TechniqueName(s.technique), s.particleSize, ColorModeName(s.colorMode), s.colorIntensity);
 		return buf;
 	}
 }

@@ -19,6 +19,7 @@ struct ParticleSettings
 	float	burstInterval = 2.0f;	// 초 (시뮬레이션 시간)
 	float	minLife = 1.0f;
 	float	maxLife = 3.0f;
+	float	particleSize = 0.03f;	// world units, quad half-size
 
 	Particles::ColorMode	colorMode = Particles::ColorMode::Fixed;
 	DirectX::XMFLOAT3		colorA = { 1.0f, 0.502f, 0.176f };
