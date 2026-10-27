@@ -182,7 +182,8 @@ void AliveListPool::Update(float deltaT, const EmitRequest& emitRequest)
 	sc.maxLife = emitRequest.emitParams.maxLife;
 	sc.minSpeed = 1.f;
 	sc.maxSpeed = 4.f;
-	sc.particleSize = emitRequest.emitParams.minSize;	// TEMP
+	//sc.particleSize = emitRequest.emitParams.minSize;	// TEMP
+	sc.particleSize = 0.3f;
 	sc.maxParticles = m_MaxParticles;
 	sc.randomSeed = HashU32(m_FrameIndex + 1);
 	FillColorConstants(sc, emitRequest.emitParams);	// colorMode, colorA, colorB

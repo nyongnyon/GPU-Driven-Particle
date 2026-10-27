@@ -20,6 +20,7 @@ VSOutput main(uint vertexId : SV_VertexID, uint instanceId : SV_InstanceID)
     output.position = mul(ViewProj, float4(worldPos, 1.f));
     output.color = ParticleColor(p);
     output.uv = corner;
+    output.viewDepth = output.position.w;
     
     return output;
 }

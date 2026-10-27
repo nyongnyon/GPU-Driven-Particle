@@ -5,6 +5,7 @@ struct PSInput
     float4 position : SV_Position;
     float4 color : COLOR0;
     float2 uv : TEXCOORD0;
+    float viewDepth : TEXCOORD1;
 };
 
 struct WBOITOutput
@@ -13,9 +14,10 @@ struct WBOITOutput
     float reveal : SV_Target1;
 };
 
-float DepthWeight(float z, float alpha)
+float DepthWeight(float d, float alpha)
 {
-    return clamp(alpha * max(1e-2f, 3e3f * z * z * z), 1e-2f, 3e3f);
+    float w = 10.0f / (1e-5f + pow(d / 5.0f, 2.0f) + pow(d / 200.0f, 6.0f));
+    return alpha * clamp(w, 1e-2f, 3e3f);
 }
 
 WBOITOutput main(PSInput input)
@@ -23,7 +25,7 @@ WBOITOutput main(PSInput input)
     float4 shaded = ShadeParticle(input.color, input.uv);
     float a = shaded.a;
     
-    float w = DepthWeight(input.position.z, a);
+    float w = DepthWeight(input.viewDepth, a);
     
     WBOITOutput o;
     o.accum = shaded * w;
