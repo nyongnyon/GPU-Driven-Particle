@@ -15,8 +15,8 @@ float4 main(float4 position : SV_Position) : SV_TARGET
     float4 accum = AccumTex[pixel];
     
     // Accum Format인 16bit 최대값을 넘어설 경우
-    if (isinf(max(max(abs(accum.r), abs(accum.g)), abs(accum.b))))
-        accum.rgb = accum.aaa;
+    //if (isinf(max(max(abs(accum.r), abs(accum.g)), abs(accum.b))))
+        //accum.rgb = accum.aaa;
     
     float3 average = accum.rgb / max(accum.a, 1e-5f);
     return float4(average, 1.0f - reveal);

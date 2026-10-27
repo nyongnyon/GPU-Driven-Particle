@@ -24,7 +24,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
     p.velocity = RandDirection(rng) * lerp(MinSpeed, MaxSpeed, Rand01(rng));
     p.life = lerp(MinLife, MaxLife, Rand01(rng));
     p.maxlife = p.life;
-    p.color = BaseColor;
+    p.color = PackR11G11B10(RandomColor(rng));;
     p.size = ParticleSize;
     p.flags = PARTICLE_FLAG_ALIVE;
     p.pad = 0;

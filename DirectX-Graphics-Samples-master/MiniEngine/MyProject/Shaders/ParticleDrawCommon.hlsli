@@ -22,6 +22,11 @@ static const float2 kCorners[6] =
     float2(-1.f, 1.f), float2(1.f, -1.f), float2(-1.f, -1.f)
 };
 
+float4 ParticleColor(Particle p)
+{
+    return float4(UnpackR11G11B10(p.color), saturate(p.life / max(p.maxlife, 1e-4)));
+}
+
 VSOutput Culled()
 {
     VSOutput output;

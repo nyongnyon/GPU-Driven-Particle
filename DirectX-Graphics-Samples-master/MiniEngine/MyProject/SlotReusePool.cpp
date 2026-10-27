@@ -166,8 +166,7 @@ void SlotReusePool::Update(float deltaT, const EmitRequest& emitRequest)
 	sc.particleSize = emitRequest.emitParams.minSize;	// TEMP
 	sc.maxParticles = m_MaxParticles;
 	sc.randomSeed = HashU32(m_FrameIndex + 1);
-	sc.baseColor = PackColor(255, 128, 45, 255); // TEMP ¡÷»≤
-
+	
 	// -------------------------
 	//		BEGIN COMPUTE
 	// -------------------------

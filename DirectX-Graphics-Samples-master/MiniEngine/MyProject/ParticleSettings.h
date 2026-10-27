@@ -20,8 +20,12 @@ struct ParticleSettings
 	float	minLife = 1.0f;
 	float	maxLife = 3.0f;
 
-	Particles::ParticleTechnique technique = Particles::ParticleTechnique::Additive;
+	Particles::ColorMode	colorMode = Particles::ColorMode::Fixed;
+	DirectX::XMFLOAT3		colorA = { 1.0f, 0.502f, 0.176f };
+	DirectX::XMFLOAT3		colorB = { 1.0f, 0.85f, 0.3f };
+	float					colorIntensity = 1.0f;
 
+	Particles::ParticleTechnique technique = Particles::ParticleTechnique::Additive;
 
 	bool operator==(const ParticleSettings& o) const;
 	bool operator!=(const ParticleSettings& o) const { return !(*this == o); }
@@ -35,7 +39,10 @@ namespace Particles
 	ParticleSettings	Sanitize(ParticleSettings s);					// 잘못된 값 정리
 	EmitterParams		BuildEmitterParams(const ParticleSettings& s);	// 비율 -> 실제 개수 (변환은 여기서만)
 
+	static const float kMaxColorIntensity = 16.0f;
+
 	const char* ModeName(Mode mode);
+	const char* ColorModeName(ColorMode mode);
 	std::string	SettingsCsvHeader();
 	std::string	SettingsCsvValues(const ParticleSettings& s);
 }

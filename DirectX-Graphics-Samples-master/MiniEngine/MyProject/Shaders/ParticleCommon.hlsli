@@ -28,6 +28,29 @@ float4 UnpackColor(uint c)
     return float4(c & 0xFF, (c >> 8) & 0xFF, (c >> 16) & 0xFF, (c >> 24) & 0xFF) / 255.0f;
 }
 
+// HDR색 저장
+uint PackR11G11B10(float3 c)
+{
+    c = clamp(c, 0.0f, 65000.0f); // 음수 / half 최대값 근처 inf 방지
+    uint3 h = f32tof16(c);
+    return ((h.r >> 4) & 0x7FF)
+          | (((h.g >> 4) & 0x7FF) << 11)
+          | (((h.b >> 5) & 0x3FF) << 22);
+}
+
+float3 UnpackR11G11B10(uint p)
+{
+    return f16tof32(uint3((p & 0x7FF) << 4,
+                          ((p >> 11) & 0x7FF) << 4,
+                          ((p >> 22) & 0x3FF) << 5));
+}
+
+float3 HueToRGB(float h)
+{
+    return saturate(abs(frac(h + float3(0.0f, 2.0f / 3.0f, 1.0f / 3.0f)) * 6.0f - 3.0f) - 1.0f);
+}
+
+
 // hash
 uint PcgHash(uint v)
 {

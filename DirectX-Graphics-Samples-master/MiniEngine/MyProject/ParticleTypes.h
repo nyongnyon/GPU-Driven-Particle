@@ -43,14 +43,24 @@ namespace Particles
 		uint32_t aliveAfterSim;
 	};
 	
+	enum class ColorMode : uint32_t
+	{
+		Fixed = 0,		// colorA 단색
+		Range,			// colorA ~ colorB 사이 랜덤
+		RandomHue,		// Hue 랜덤, 밝기 = intensity
+		COUNT
+	};
+
 	struct alignas(16) Simconstants
 	{
 		DirectX::XMFLOAT3 emitterPos;	float deltaTime;
 		DirectX::XMFLOAT3 gravity;		uint32_t emitCount;
 		float minLife; float maxLife; float minSpeed; float maxSpeed;
-		float particleSize; uint32_t maxParticles; uint32_t randomSeed; uint32_t baseColor;
+		float particleSize; uint32_t maxParticles; uint32_t randomSeed;  uint32_t colorMode;
+		DirectX::XMFLOAT4 colorA;		// rgb : HDR 색(밝기 곱한 값), w : 밝기
+		DirectX::XMFLOAT4 colorB;		// rgb : HDR 색 (Range 전용)
 	};
-	static_assert(sizeof(Simconstants) == 64, "HLSL cbuffer SimConstants(64 B)와 일치해야 함");
+	static_assert(sizeof(Simconstants) == 96, "HLSL cbuffer SimConstants(96 B)와 일치해야 함");
 
 	// 파티클 렌더링에 필요한 Constant Buffer
 	struct alignas(16) DrawConstants

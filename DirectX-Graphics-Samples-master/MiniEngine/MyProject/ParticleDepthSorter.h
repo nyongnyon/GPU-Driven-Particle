@@ -21,7 +21,8 @@ public:
 	void Shutdown();
 
 	// 정렬 결과를 읽는 DrawInput을 반환 (source = Sorted, indirect)
-	Particles::DrawInput Sort(GraphicsContext& gfx, const Math::Camera& cam, const Particles::DrawInput& input);
+	Particles::DrawInput Sort(GraphicsContext& gfx, const Math::Camera& cam,
+		const Particles::DrawInput& input);
 
 private:
 	enum KeyGenVariant : uint32_t

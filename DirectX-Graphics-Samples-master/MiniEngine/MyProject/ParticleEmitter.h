@@ -1,5 +1,6 @@
 #pragma once
 #include "VectorMath.h"
+#include "ParticleTypes.h"
 
 struct EmitterParams
 {
@@ -15,6 +16,11 @@ struct EmitterParams
 
 	uint32_t burstCount = 0;
 	float	 burstInterval = 5.f;
+
+	Particles::ColorMode	colorMode = Particles::ColorMode::Fixed;
+	DirectX::XMFLOAT3		colorA = { 1.0f, 0.502f, 0.176f };
+	DirectX::XMFLOAT3		colorB = { 1.0f, 0.85f, 0.3f };
+	float					colorIntensity = 1.0f;
 };
 
 struct EmitRequest

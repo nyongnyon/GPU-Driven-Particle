@@ -207,6 +207,23 @@ void MyProject::UpdateImGui( float deltaT )
         ImGui::SliderFloat("Life min (s)", &m_Draft.minLife, 0.1f, 5.f, "%.1f");
         ImGui::SliderFloat("Life max (s)", &m_Draft.maxLife, 0.1f, 5.f, "%.1f");
 
+        // Color (Apply 후 새로 생기는 파티클부터 반영)
+        ImGui::SeparatorText("Color");
+        int colorMode = (int)m_Draft.colorMode;
+        ImGui::RadioButton("Fixed", &colorMode, (int)Particles::ColorMode::Fixed); ImGui::SameLine();
+        ImGui::RadioButton("Range", &colorMode, (int)Particles::ColorMode::Range); ImGui::SameLine();
+        ImGui::RadioButton("Random Hue", &colorMode, (int)Particles::ColorMode::RandomHue);
+        m_Draft.colorMode = (Particles::ColorMode)colorMode;
+
+        if (m_Draft.colorMode != Particles::ColorMode::RandomHue)
+            ImGui::ColorEdit3(m_Draft.colorMode == Particles::ColorMode::Range ? "Color A" : "Color", &m_Draft.colorA.x);
+        if (m_Draft.colorMode == Particles::ColorMode::Range)
+            ImGui::ColorEdit3("Color B", &m_Draft.colorB.x);
+
+        // 1 초과 = HDR (Bloom 문턱 4.0 / 노출 2.0 기준, 2 이상이면 빛나기 시작)
+        ImGui::SliderFloat("Intensity", &m_Draft.colorIntensity, 0.f, Particles::kMaxColorIntensity, "%.2f",
+            ImGuiSliderFlags_Logarithmic);
+
         // Render
         ImGui::SeparatorText("Render");
         int tech = (int)m_Draft.technique;

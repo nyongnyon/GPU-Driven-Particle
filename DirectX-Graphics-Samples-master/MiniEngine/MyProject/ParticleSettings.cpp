@@ -8,6 +8,16 @@ namespace
 {
 	template <typename T>
 	T ClampValue(T v, T lo, T hi) { return v < lo ? lo : (v > hi ? hi : v); }
+
+	bool SameColor(const DirectX::XMFLOAT3& a, const DirectX::XMFLOAT3& b)
+	{
+		return a.x == b.x && a.y == b.y && a.z == b.z;
+	}
+
+	DirectX::XMFLOAT3 Clamp01(DirectX::XMFLOAT3 c)
+	{
+		return { ClampValue(c.x, 0.f, 1.f), ClampValue(c.y, 0.f, 1.f), ClampValue(c.z, 0.f, 1.f) };
+	}
 }
 
 bool ParticleSettings::operator==(const ParticleSettings& o) const
@@ -19,6 +29,10 @@ bool ParticleSettings::operator==(const ParticleSettings& o) const
 		&& burstInterval == o.burstInterval
 		&& minLife == o.minLife
 		&& maxLife == o.maxLife
+		&& colorMode == o.colorMode
+		&& SameColor(colorA, o.colorA)
+		&& SameColor(colorB, o.colorB)
+		&& colorIntensity == o.colorIntensity
 		&& technique == o.technique;
 }
 
@@ -35,6 +49,12 @@ namespace Particles
 		s.burstInterval = ClampValue(s.burstInterval, 1.f / 60.f, 60.f);
 		s.minLife = ClampValue(s.minLife, 0.01f, 60.f);
 		s.maxLife = ClampValue(s.maxLife, s.minLife, 60.f);	// max >= min ∫∏¿Â
+
+		if (static_cast<uint32_t>(s.colorMode) >= static_cast<uint32_t>(ColorMode::COUNT))
+			s.colorMode = ColorMode::Fixed;
+		s.colorA = Clamp01(s.colorA);
+		s.colorB = Clamp01(s.colorB);
+		s.colorIntensity = ClampValue(s.colorIntensity, 0.f, kMaxColorIntensity);
 		return s;
 	}
 
@@ -46,7 +66,24 @@ namespace Particles
 		p.emitRate = ComputeEmitRateByAliveRatio(s.steadyRatio, s.minLife, s.maxLife, s.maxParticles);
 		p.burstCount = uint32_t(s.burstRatio * float(s.maxParticles));
 		p.burstInterval = s.burstInterval;
+		
+		p.colorMode = s.colorMode;
+		p.colorA = s.colorA;
+		p.colorB = s.colorB;
+		p.colorIntensity = s.colorIntensity;
 		return p;
+	}
+
+
+	const char* ColorModeName(ColorMode mode)
+	{
+		switch (mode)
+		{
+		case ColorMode::Fixed:		return "Fixed";
+		case ColorMode::Range:		return "Range";
+		case ColorMode::RandomHue:	return "RandomHue";
+		default:					return "None";
+		}
 	}
 
 	const char* ModeName(Mode mode)
@@ -63,6 +100,7 @@ namespace Particles
 		default:						return "None";
 		}
 	}
+
 
 	std::string SettingsCsvHeader()
 	{
