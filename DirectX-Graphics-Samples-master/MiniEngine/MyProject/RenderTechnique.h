@@ -22,6 +22,9 @@ public:
 
     virtual void ConfigurePSO(GraphicsPSO& pso) const = 0;
 
+    // true면 Renderer가 draw 직전에 깊이 정렬(back-to-front)된 입력으로 교체한다
+    virtual bool RequiresDepthSort() const { return false; }
+
     virtual void BeginDraw(GraphicsContext& gfx, const ParticleRenderTarget& target) {}
     virtual void EndDraw(GraphicsContext& gfx, const ParticleRenderTarget& target) {}
 };
@@ -30,12 +33,15 @@ public:
 class SinglePassTechnique : public RenderTechnique
 {
 public:
-    explicit SinglePassTechnique(const D3D12_BLEND_DESC& blend) : m_Blend(blend) {}
+    explicit SinglePassTechnique(const D3D12_BLEND_DESC& blend, bool depthSorted = false)
+        : m_Blend(blend), m_DepthSorted(depthSorted) {}
     void ConfigurePSO(GraphicsPSO& pso) const override;
+    bool RequiresDepthSort() const override { return m_DepthSorted; }
 
 
 private:
     D3D12_BLEND_DESC m_Blend;
+    bool             m_DepthSorted = false;
 };
 
 // WBOIT 전용, multi pass, multi rtv

@@ -18,7 +18,8 @@ bool ParticleSettings::operator==(const ParticleSettings& o) const
 		&& burstRatio == o.burstRatio
 		&& burstInterval == o.burstInterval
 		&& minLife == o.minLife
-		&& maxLife == o.maxLife;
+		&& maxLife == o.maxLife
+		&& technique == o.technique;
 }
 
 namespace Particles

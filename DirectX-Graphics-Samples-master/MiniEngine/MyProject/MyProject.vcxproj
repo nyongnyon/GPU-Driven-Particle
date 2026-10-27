@@ -62,6 +62,7 @@
     <ClInclude Include="ParticleEmitter.h" />
     <ClInclude Include="ParticleMaterial.h" />
     <ClInclude Include="ParticlePool.h" />
+    <ClInclude Include="ParticleDepthSorter.h" />
     <ClInclude Include="ParticleRenderer.h" />
     <ClInclude Include="ParticleRenderTypes.h" />
     <ClInclude Include="ParticleSettings.h" />
@@ -83,6 +84,7 @@
     <ClCompile Include="ParticleMaterial.cpp" />
     <ClCompile Include="ParticlePool.cpp" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="ParticleDepthSorter.cpp" />
     <ClCompile Include="ParticleRenderer.cpp" />
     <ClCompile Include="ParticleSettings.cpp" />
     <ClCompile Include="ParticleSystem.cpp" />
@@ -121,6 +123,7 @@
     <None Include="Shaders\ParticleDrawReuseCommon.hlsli" />
     <None Include="Shaders\ParticleShading.hlsli" />
     <None Include="Shaders\ParticleSimulateCommon.hlsli" />
+    <None Include="Shaders\ParticleSortKeyCommon.hlsli" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\DebugLinePS.hlsl">
@@ -165,6 +168,35 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleDrawSortedVS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleSortKeyAliveCS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.2</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">6.2</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.2</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleSortKeyReuseCS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.2</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">6.2</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.2</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleSortKeyReuseFlagsCS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.2</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">6.2</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.2</ShaderModel>
     </FxCompile>
     <FxCompile Include="Shaders\ParticleEmitAliveCS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>

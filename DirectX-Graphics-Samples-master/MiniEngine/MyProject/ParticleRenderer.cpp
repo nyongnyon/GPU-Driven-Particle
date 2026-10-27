@@ -15,6 +15,7 @@
 #include "CompiledShaders/ParticleDrawReuseVS.h"
 #include "CompiledShaders/ParticleDrawReuseFlagsVS.h"
 #include "CompiledShaders/ParticleDrawAliveVS.h"
+#include "CompiledShaders/ParticleDrawSortedVS.h"
 
 using namespace Graphics;
 using namespace Particles;
@@ -45,6 +46,8 @@ namespace
 			return { g_pParticleDrawReuseFlagsVS, sizeof(g_pParticleDrawReuseFlagsVS) };
 		case DrawSource::AliveList:
 			return { g_pParticleDrawAliveVS, sizeof(g_pParticleDrawAliveVS) };
+		case DrawSource::Sorted:
+			return { g_pParticleDrawSortedVS, sizeof(g_pParticleDrawSortedVS) };
 		default:
 			break;
 		}
@@ -60,6 +63,7 @@ void ParticleRenderer::Initialize()
 	
 	BuildRootSignature();
 	CreateTechniques();
+	m_DepthSorter.Initialize();
 	PrewarmPSOs();
 
 	m_Initialized = true;
@@ -75,6 +79,7 @@ void ParticleRenderer::Shutdown()
 			tech.reset();
 		}
 	}
+	m_DepthSorter.Shutdown();
 	m_PSOCache.clear();
 	m_Initialized = false;
 }
@@ -91,11 +96,16 @@ void ParticleRenderer::Render(GraphicsContext& gfx, const Math::Camera& cam,
 
 	RenderTechnique& tech = GetTechniqueImpl(m_Technique);
 
+	// 정렬이 필요한 기법이면 Pool 입력을 GPU 깊이 정렬된 입력으로 교체 (Pool은 변경 없음)
+	const Particles::DrawInput drawInput = tech.RequiresDepthSort()
+		? m_DepthSorter.Sort(gfx, cam, input)
+		: input;
+
 	tech.BeginDraw(gfx, target);
 
 	// PSO
 	gfx.SetRootSignature(m_DrawSignature);
-	gfx.SetPipelineState(GetPSO(MakeKey(input.source, m_Technique)));
+	gfx.SetPipelineState(GetPSO(MakeKey(drawInput.source, m_Technique)));
 	gfx.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	// b0 : Camera
@@ -112,7 +122,7 @@ void ParticleRenderer::Render(GraphicsContext& gfx, const Math::Camera& cam,
 	// t0 - t2 : 파티클 데이터
 	D3D12_CPU_DESCRIPTOR_HANDLE particleSrvs[kNumParticleSRVs];
 	for (uint32_t i = 0; i < kNumParticleSRVs; ++i)
-		particleSrvs[i] = (i < input.numSrvs) ? input.srvs[i] : input.srvs[0]; // 0 = null
+		particleSrvs[i] = (i < drawInput.numSrvs) ? drawInput.srvs[i] : drawInput.srvs[0]; // 0 = null
 	gfx.SetDynamicDescriptors(kParticleSRV, 0, kNumParticleSRVs, particleSrvs);
 
 	// t3 - t6 : 머티리얼 텍스처
@@ -129,10 +139,10 @@ void ParticleRenderer::Render(GraphicsContext& gfx, const Math::Camera& cam,
 	{
 		ScopedTimer _t(L"Particle Draw", gfx);
 
-		if (input.indirectBuffer != nullptr)
-			gfx.DrawIndirect(*input.indirectBuffer, input.argsOffset);
+		if (drawInput.indirectBuffer != nullptr)
+			gfx.DrawIndirect(*drawInput.indirectBuffer, drawInput.argsOffset);
 		else
-			gfx.DrawInstanced(6, input.maxParticle);
+			gfx.DrawInstanced(6, drawInput.maxParticle);
 	}
 
 
@@ -165,6 +175,10 @@ void ParticleRenderer::CreateTechniques()
 	m_Techniques[static_cast<uint32_t>(ParticleTechnique::WeightedOIT)] =
 		std::make_unique<WBOITTechnique>();
 
+	// ShadeParticle()이 premultiplied (rgb*a, a)를 출력하므로 over 연산 = ONE, INV_SRC_ALPHA
+	m_Techniques[static_cast<uint32_t>(ParticleTechnique::SortedAlpha)] =
+		std::make_unique<SinglePassTechnique>(BlendPreMultiplied, true);
+
 	for (auto& tech : m_Techniques)
 	{
 		tech->Initialize();
@@ -177,6 +191,11 @@ void ParticleRenderer::PrewarmPSOs()
 	{
 		for (uint32_t t = 0; t < static_cast<uint32_t>(ParticleTechnique::COUNT); ++t)
 		{
+			// Sorted source는 정렬 기법에서만, 정렬 기법은 Sorted source로만 그린다
+			const bool sortedSource = (static_cast<DrawSource>(s) == DrawSource::Sorted);
+			if (sortedSource != GetTechniqueImpl(static_cast<ParticleTechnique>(t)).RequiresDepthSort())
+				continue;
+
 			GetPSO(MakeKey(static_cast<DrawSource>(s), static_cast<ParticleTechnique>(t)));
 		}
 	}
