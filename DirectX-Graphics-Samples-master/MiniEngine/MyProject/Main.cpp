@@ -47,6 +47,7 @@ public:
 
 private:
     void UpdateImGui( float deltaT );
+    void SetCameraPreset( float distance );
 
     bool m_ShowImGuiDemo = false;
 
@@ -134,8 +135,10 @@ void MyProject::Update( float deltaT )
     const Particles::ParticleStat stat = m_Particles.GetParticleStat();
     if (m_Recorder.Tick(stat.counters.aliveCount))
     {
-        m_LastSaveOk = m_Recorder.AppendCSV("ParticleProfile_v3.csv",
-            Particles::SettingsCsvHeader(), Particles::SettingsCsvValues(m_Particles.GetSettings()),
+        const bool useTex = (m_Particles.GetMaterial().constants.features & Particles::kFeatureTexture) != 0;
+        m_LastSaveOk = m_Recorder.AppendCSV("ParticleProfile_v4.csv",
+            Particles::SettingsCsvHeader() + ",texture",
+            Particles::SettingsCsvValues(m_Particles.GetSettings()) + (useTex ? ",1" : ",0"),
             m_RecordTag, stat.maxParticles);
     }
 
@@ -150,6 +153,15 @@ void MyProject::UpdateImGui( float deltaT )
     ImGui::Text("Mode: %s  [F1 to toggle]", ImGuiLayer::IsCameraMode() ? "Camera" : "UI");
     ImGui::Checkbox("Fixed dt (1/60 s)", &m_FixedDt);
     ImGui::Checkbox("Show ImGui Demo", &m_ShowImGuiDemo);
+
+    // Camera presets: same direction as the start position, only the distance changes
+    ImGui::BeginDisabled(m_Recorder.IsBusy());
+    if (ImGui::Button("Near")) SetCameraPreset(5.f);
+    ImGui::SameLine();
+    if (ImGui::Button("Mid")) SetCameraPreset(15.8f);
+    ImGui::SameLine();
+    if (ImGui::Button("Far")) SetCameraPreset(40.f);
+    ImGui::EndDisabled();
     ImGui::End();
 
     ImGui::Begin("Particle");
@@ -206,6 +218,7 @@ void MyProject::UpdateImGui( float deltaT )
         ImGui::SliderFloat("Burst interval (s)", &m_Draft.burstInterval, 0.5f, 5.f, "%.1f");
         ImGui::SliderFloat("Life min (s)", &m_Draft.minLife, 0.1f, 5.f, "%.1f");
         ImGui::SliderFloat("Life max (s)", &m_Draft.maxLife, 0.1f, 5.f, "%.1f");
+        ImGui::SliderFloat("Size", &m_Draft.particleSize, 0.005f, 1.f, "%.3f", ImGuiSliderFlags_Logarithmic);
 
         // Color (Apply 후 새로 생기는 파티클부터 반영)
         ImGui::SeparatorText("Color");
@@ -275,9 +288,9 @@ void MyProject::UpdateImGui( float deltaT )
         ImGui::EndDisabled();
 
         const ParticleSettings& s = m_Particles.GetSettings();
-        ImGui::TextDisabled("applied: %s, %u, steady %.2f, burst %.2f / %.1fs, life %.1f~%.1f",
+        ImGui::TextDisabled("applied: %s, %u, steady %.2f, burst %.2f / %.1fs, life %.1f~%.1f, %s, size %.3f",
             Particles::ModeName(s.mode), s.maxParticles, s.steadyRatio, s.burstRatio,
-            s.burstInterval, s.minLife, s.maxLife);
+            s.burstInterval, s.minLife, s.maxLife, Particles::TechniqueName(s.technique), s.particleSize);
     }
 
     {
@@ -313,6 +326,19 @@ void MyProject::UpdateImGui( float deltaT )
 
     if (m_ShowImGuiDemo)
         ImGui::ShowDemoWindow(&m_ShowImGuiDemo);
+}
+
+void MyProject::SetCameraPreset( float distance )
+{
+    const Vector3 eye = Normalize(Vector3(0.f, 5.f, -15.f)) * distance;
+    m_Camera.SetEyeAtUp(eye, Vector3(0.f, 0.f, 0.f), Vector3(Math::kYUnitVector));
+    m_Camera.Update();
+
+    // FlyingFPSCamera keeps its own heading/pitch, so rebuild it from the new camera direction
+    auto NewCam = new FlyingFPSCamera(m_Camera, Vector3(Math::kYUnitVector));
+    NewCam->SetMoveSpeed(10.f);
+    NewCam->SetStrafeSpeed(10.f);
+    m_CameraController.reset(NewCam);
 }
 
 void MyProject::RenderScene( void )
