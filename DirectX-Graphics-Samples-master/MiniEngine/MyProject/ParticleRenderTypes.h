@@ -12,7 +12,7 @@ namespace Particles
 		SlotReuse,
 		SlotReuseFlags,
 		AliveList,
-		Sorted,			// Renderer 내부 전용 : ParticleDepthSorter 결과 (Pool은 사용하지 않음)
+		Sorted,
 		COUNT
 	};
 

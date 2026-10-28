@@ -32,6 +32,8 @@ ByteAddressBuffer Counters : register(t2);
 RWByteAddressBuffer SortList : register(u0);    // uint2(slot, depthKey) : BitonicSort 64bit 포맷 (key = .y)
 RWByteAddressBuffer DrawArgs : register(u1);    // InstanceCount = 정렬 대상 수 (BitonicSort의 counter로도 사용)
 
+
+
 [numthreads(PARTICLE_GROUP_SIZE, 1, 1)]
 void main(uint3 DTid : SV_DispatchThreadID)
 {
