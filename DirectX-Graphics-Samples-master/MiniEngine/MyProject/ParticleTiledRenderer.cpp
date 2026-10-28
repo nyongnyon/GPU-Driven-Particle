@@ -10,6 +10,7 @@
 #include "GpuBuffer.h"
 #include "EngineProfiling.h"
 
+#include "CompiledShaders/ParticleTiledPrepCS.h"
 #include "CompiledShaders/ParticleTiledRenderCS.h"
 #include "CompiledShaders/ParticleTiledCompositePS.h"
 #include "CompiledShaders/ParticleFullscreenVS.h"
@@ -21,7 +22,13 @@ using namespace Graphics;
 namespace
 {
 	enum TileRootParams : uint32_t { kTileCBV = 0, kTileSRVs, kTileUAVs, kNumTileRootParams };
-	constexpr uint32_t kNumTileSRVs = 4;	// t0 particles, t1 정렬 목록, t2 개수(DrawArgs), t3 예비
+	// t0 particles, t1 정렬 목록, t2 개수(DrawArgs), t3/t4 예비, t5 TiledParticles
+	constexpr uint32_t kNumTileSRVs = 6;
+
+	// u0 Result, u1 TiledParticles (Prep CS)
+	constexpr uint32_t kNumTileUAVs = 2; 
+	
+	constexpr uint32_t kNumParticleStride = 32;
 
 	struct alignas(16) TileConstants
 	{
@@ -44,8 +51,12 @@ void ParticleTiledRenderer::Initialize()
 	m_TileSig.Reset(kNumTileRootParams, 0);
 	m_TileSig[kTileCBV].InitAsConstantBuffer(0);
 	m_TileSig[kTileSRVs].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, kNumTileSRVs);
-	m_TileSig[kTileUAVs].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1);
+	m_TileSig[kTileUAVs].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, kNumTileUAVs);
 	m_TileSig.Finalize(L"Particle Tiled RootSig");
+
+	m_PrepPSO.SetRootSignature(m_TileSig);
+	m_PrepPSO.SetComputeShader(g_pParticleTiledPrepCS, sizeof(g_pParticleTiledPrepCS));
+	m_PrepPSO.Finalize();
 
 	m_TilePSO.SetRootSignature(m_TileSig);
 	m_TilePSO.SetComputeShader(g_pParticleTiledRenderCS, sizeof(g_pParticleTiledRenderCS));
@@ -70,6 +81,8 @@ void ParticleTiledRenderer::Initialize()
 void ParticleTiledRenderer::Shutdown()
 {
 	m_Result.Destroy();
+	m_TiledParticles.Destroy();
+	m_Capacity = 0;
 }
 
 void ParticleTiledRenderer::EnsureSize(uint32_t width, uint32_t height)
@@ -86,6 +99,20 @@ void ParticleTiledRenderer::EnsureSize(uint32_t width, uint32_t height)
 	m_Result.Create(L"Particle Tiled Result", width, height, 1, kResultFormat);
 }
 
+void ParticleTiledRenderer::EnsureCapacity(uint32_t maxParticles)
+{
+	if (maxParticles == 0 || m_Capacity == maxParticles)
+		return;
+
+	if (m_Capacity != 0)
+	{
+		g_CommandManager.IdleGPU();
+		m_TiledParticles.Destroy();
+	}
+	m_TiledParticles.Create(L"Tiled Particles", maxParticles, kNumParticleStride);
+	m_Capacity = maxParticles;
+}
+
 void ParticleTiledRenderer::Render(GraphicsContext& gfx, const Math::Camera& cam,
 	const Particles::DrawInput& sorted, const ParticleMaterial& /*material*/,
 	const ParticleRenderTarget& target)
@@ -93,23 +120,23 @@ void ParticleTiledRenderer::Render(GraphicsContext& gfx, const Math::Camera& cam
 	const uint32_t w = target.color.GetWidth();
 	const uint32_t h = target.color.GetHeight();
 	EnsureSize(w, h);
+	EnsureCapacity(sorted.maxParticle);
 
 	ComputeContext& cc = gfx.GetComputeContext();
+
+	cc.TransitionResource(*sorted.indirectBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	cc.TransitionResource(m_Result, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	cc.TransitionResource(m_TiledParticles, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
+	
+	cc.SetRootSignature(m_TileSig);
+
 	{
-		ScopedTimer _t(L"Particle Tiled", cc);
-
-		cc.TransitionResource(*sorted.indirectBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-		cc.TransitionResource(m_Result, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
-
-		cc.SetRootSignature(m_TileSig);
-		cc.SetPipelineState(m_TilePSO);
-
 		TileConstants tc = {};
 		tc.screenWidth = w;
 		tc.screenHeight = h;
 		tc.tileCountX = (w + kTileSize - 1) / kTileSize;
 		tc.tileCountY = (h + kTileSize - 1) / kTileSize;
-		
+
 		XMStoreFloat4x4(&tc.viewProj, cam.GetViewProjMatrix());
 
 		DirectX::XMFLOAT4X4 proj;
@@ -118,8 +145,37 @@ void ParticleTiledRenderer::Render(GraphicsContext& gfx, const Math::Camera& cam
 		tc.projScaleY = proj._22;
 		tc.heatMax = 1024.f;
 		tc.nearClip = cam.GetNearClip();
-		
+
 		cc.SetDynamicConstantBufferView(kTileCBV, sizeof(tc), &tc);
+	}
+
+	{
+		ScopedTimer _t(L"Particle Tiled Prep", cc);
+		cc.SetPipelineState(m_PrepPSO);		
+
+		const D3D12_CPU_DESCRIPTOR_HANDLE srvs[kNumTileSRVs] =
+		{
+			sorted.srvs[0],
+			sorted.srvs[1],
+			sorted.indirectBuffer->GetSRV(),
+			sorted.srvs[0],						// t3
+			sorted.srvs[0],						// t4
+			sorted.srvs[0],						// t5 (이 패스에선 미사용)
+		};
+
+		const D3D12_CPU_DESCRIPTOR_HANDLE uavs[kNumTileUAVs] = { m_Result.GetUAV(), m_TiledParticles.GetUAV() };
+
+		cc.SetDynamicDescriptors(kTileSRVs, 0, kNumTileSRVs, srvs);
+		cc.SetDynamicDescriptors(kTileUAVs, 0, kNumTileUAVs, uavs);
+		cc.Dispatch1D(sorted.maxParticle, 64);
+	}
+	
+	cc.TransitionResource(m_TiledParticles, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, true);
+
+
+	{
+		ScopedTimer _t(L"Particle Tiled", cc);
+		cc.SetPipelineState(m_TilePSO);
 
 		const D3D12_CPU_DESCRIPTOR_HANDLE srvs[kNumTileSRVs] =
 		{
@@ -127,9 +183,13 @@ void ParticleTiledRenderer::Render(GraphicsContext& gfx, const Math::Camera& cam
 			sorted.srvs[1],					
 			sorted.indirectBuffer->GetSRV(),
 			sorted.srvs[0],					
+			sorted.srvs[0],					
+			m_TiledParticles.GetSRV(),			// t5 TiledParticles
 		};
+
+		const D3D12_CPU_DESCRIPTOR_HANDLE uavs[kNumTileUAVs] = { m_Result.GetUAV(), m_Result.GetUAV() };
 		cc.SetDynamicDescriptors(kTileSRVs, 0, kNumTileSRVs, srvs);
-		cc.SetDynamicDescriptor(kTileUAVs, 0, m_Result.GetUAV());
+		cc.SetDynamicDescriptors(kTileUAVs, 0, kNumTileUAVs, uavs);
 
 		cc.Dispatch2D(w, h, kTileSize, kTileSize);
 	}

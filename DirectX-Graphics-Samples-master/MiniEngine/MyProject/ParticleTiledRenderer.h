@@ -1,5 +1,6 @@
 #pragma once
 #include "ColorBuffer.h"
+#include "GpuBuffer.h"
 #include "RootSignature.h"
 #include "PipelineState.h"
 #include "ParticleRenderTypes.h"
@@ -24,9 +25,14 @@ public:
 
 private:
 	void EnsureSize(uint32_t width, uint32_t height);
+	void EnsureCapacity(uint32_t maxParticles);
 
 	RootSignature	m_TileSig;
+	ComputePSO		m_PrepPSO{ L"Particle Tile Prep CS" };
 	ComputePSO		m_TilePSO{ L"Particle Tiled Render CS" };
+
+	StructuredBuffer	m_TiledParticles;
+	uint32_t			m_Capacity = 0;
 
 	RootSignature	m_CompositeSig;
 	GraphicsPSO		m_CompositePSO{ L"Particle Tiled Composite PSO" };

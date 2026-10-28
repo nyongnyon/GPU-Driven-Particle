@@ -194,6 +194,9 @@
     <None Include="Shaders\ParticleSortKeyCommon.hlsli">
       <Filter>Shaders\Particle</Filter>
     </None>
+    <None Include="Shaders\ParticleTiledCommon.hlsli">
+      <Filter>Shaders\Particle</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\DebugLineVS.hlsl">
@@ -284,6 +287,9 @@
       <Filter>Shaders\Particle</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ParticleTiledCompositePS.hlsl">
+      <Filter>Shaders\Particle</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleTiledPrepCS.hlsl">
       <Filter>Shaders\Particle</Filter>
     </FxCompile>
   </ItemGroup>
