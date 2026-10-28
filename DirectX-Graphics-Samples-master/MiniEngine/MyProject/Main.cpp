@@ -57,6 +57,7 @@ private:
     ParticleSystem          m_Particles;
     ParticleSettings        m_Draft;
     bool                    m_FixedDt = true;
+    bool                    m_Paused = false;     // time stop: simulate with dt = 0
 
     ProfileRecorder m_Recorder;
     int  m_RecordFrames = 1000;
@@ -130,7 +131,9 @@ void MyProject::Update( float deltaT )
     //DebugDraw::AddLine(Vector3(-1.f, 0.f, 0.f), Vector3(1.f, 0.f, 0.f), Color(1.f, 1.f, 1.f));
 
 
-    m_Particles.Update(m_FixedDt ? 1.0f / 60.f : deltaT);
+    // Paused: every pass still runs, but nothing moves, ages or emits
+    const float simDt = m_Paused ? 0.f : (m_FixedDt ? 1.0f / 60.f : deltaT);
+    m_Particles.Update(simDt);
 
     const Particles::ParticleStat stat = m_Particles.GetParticleStat();
     if (m_Recorder.Tick(stat.counters.aliveCount))
@@ -153,6 +156,17 @@ void MyProject::UpdateImGui( float deltaT )
     ImGui::Text("Mode: %s  [F1 to toggle]", ImGuiLayer::IsCameraMode() ? "Camera" : "UI");
     ImGui::Checkbox("Fixed dt (1/60 s)", &m_FixedDt);
     ImGui::Checkbox("Show ImGui Demo", &m_ShowImGuiDemo);
+
+    // Time stop (disabled while recording so a record never mixes both states)
+    ImGui::BeginDisabled(m_Recorder.IsBusy());
+    if (ImGui::Button(m_Paused ? "Play###PlayStop" : "Stop###PlayStop"))
+        m_Paused = !m_Paused;
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    if (m_Paused)
+        ImGui::TextColored(ImVec4(1.f, 0.6f, 0.2f, 1.f), "STOPPED (dt = 0)");
+    else
+        ImGui::Text("Playing");
 
     // Camera presets: same direction as the start position, only the distance changes
     ImGui::BeginDisabled(m_Recorder.IsBusy());
