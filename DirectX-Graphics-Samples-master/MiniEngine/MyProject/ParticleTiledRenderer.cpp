@@ -30,7 +30,7 @@ namespace
 		DirectX::XMFLOAT4X4 viewProj;
 		float projScaleX, projScaleY;
 		float heatMax; // 히트맵 최대값 (디버그용)
-		float pad;
+		float nearClip;		
 	};
 	static_assert(sizeof(TileConstants) == 96, "HLSL TileConstants(96 B)와 일치해야 함");
 
@@ -117,6 +117,7 @@ void ParticleTiledRenderer::Render(GraphicsContext& gfx, const Math::Camera& cam
 		tc.projScaleX = proj._11;
 		tc.projScaleY = proj._22;
 		tc.heatMax = 1024.f;
+		tc.nearClip = cam.GetNearClip();
 		
 		cc.SetDynamicConstantBufferView(kTileCBV, sizeof(tc), &tc);
 

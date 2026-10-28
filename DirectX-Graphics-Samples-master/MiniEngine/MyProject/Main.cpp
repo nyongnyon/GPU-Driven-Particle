@@ -87,7 +87,7 @@ void MyProject::Startup( void )
 
     // Setup your data
     m_Draft.mode = Particles::Mode::AliveIndirect;
-    m_Draft.maxParticles = 1'000'000;
+    m_Draft.maxParticles = 100'000;
     m_Draft.steadyRatio = 0.5f;
     m_Draft.technique = Particles::ParticleTechnique::TiledAlpha;
     //m_Draft.technique = Particles::ParticleTechnique::WeightedOIT;
@@ -244,6 +244,8 @@ void MyProject::UpdateImGui( float deltaT )
         ImGui::RadioButton("Premultiplied", &tech, (int)Particles::ParticleTechnique::PremultipliedAlpha); ImGui::SameLine();
         ImGui::RadioButton("WBOIT", &tech, (int)Particles::ParticleTechnique::WeightedOIT); ImGui::SameLine();
         ImGui::RadioButton("Sorted Alpha", &tech, (int)Particles::ParticleTechnique::SortedAlpha);
+        ImGui::RadioButton("Tiled Alpha", &tech, (int)Particles::ParticleTechnique::TiledAlpha);
+
         m_Draft.technique = (Particles::ParticleTechnique)tech;
 
         // WBOIT는 깊이 테스트를 항상 켜므로 체크박스를 잠근다
