@@ -26,6 +26,7 @@ public:
 
 	const ParticleSettings& GetSettings() const { return m_Settings; }
 	ParticleMaterial&		GetMaterial() { return m_ParticleMaterial; }
+	ParticleRenderer&		GetRenderer() { return m_ParticleRenderer; }
 	Particles::ParticleStat	GetParticleStat();
 
 private:

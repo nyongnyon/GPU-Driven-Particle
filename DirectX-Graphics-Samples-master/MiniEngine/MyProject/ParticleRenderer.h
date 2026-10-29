@@ -5,6 +5,7 @@
 #include "RenderTechnique.h"
 #include "ParticleDepthSorter.h"
 #include "ParticleTiledRenderer.h"
+#include "ParticleLayeredRenderer.h"
 #include "VectorMath.h"
 #include "RootSignature.h"
 #include "PipelineState.h"
@@ -29,11 +30,14 @@ public:
 	void SetTechnique(Particles::ParticleTechnique technique) { m_Technique = technique; }
 	Particles::ParticleTechnique GetTechnique() const { return m_Technique; }
 
+	ParticleLayeredRenderer::Options& LayeredOptions() { return m_LayeredRenderer.GetOptions(); }
+
+
 private:
 	struct PipelineKey
 	{
 		Particles::DrawSource			source = Particles::DrawSource::FullScan;
-		Particles::ParticleTechnique		output = Particles::ParticleTechnique::Additive;
+		Particles::ParticleTechnique	output = Particles::ParticleTechnique::Additive;
 		uint32_t						shaderVariant = 0;
 		
 		uint32_t Pack() const;
@@ -52,7 +56,8 @@ private:
 	RootSignature		m_DrawSignature;
 	ParticleDepthSorter	m_DepthSorter;		// SortedAlpha 등 RequiresDepthSort() 기법용
 	ParticleTiledRenderer m_TiledRenderer;
-	
+	ParticleLayeredRenderer m_LayeredRenderer;	// TiledLayeredWBOIT
+
 	std::unordered_map<uint32_t, std::unique_ptr<GraphicsPSO>> m_PSOCache;
 	std::unique_ptr<RenderTechnique> m_Techniques[static_cast<uint32_t>(Particles::ParticleTechnique::COUNT)];
 

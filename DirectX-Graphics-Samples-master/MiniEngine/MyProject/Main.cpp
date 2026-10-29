@@ -37,17 +37,17 @@ public:
 
     }
 
-    virtual void Startup( void ) override;
-    virtual void Cleanup( void ) override;
+    virtual void Startup(void) override;
+    virtual void Cleanup(void) override;
 
-    virtual void Update( float deltaT ) override;
-    virtual void RenderScene( void ) override;
+    virtual void Update(float deltaT) override;
+    virtual void RenderScene(void) override;
 
     virtual bool RequiresImGui() const override { return true; }
 
 private:
-    void UpdateImGui( float deltaT );
-    void SetCameraPreset( float distance );
+    void UpdateImGui(float deltaT);
+    void SetCameraPreset(float distance);
 
     bool m_ShowImGuiDemo = false;
 
@@ -65,9 +65,9 @@ private:
     bool m_LastSaveOk = true;
 };
 
-CREATE_APPLICATION( MyProject )
+CREATE_APPLICATION(MyProject)
 
-void MyProject::Startup( void )
+void MyProject::Startup(void)
 {
     // Rendering Setting
     //g_SceneColorBuffer.SetClearColor(Color(0.5f, 0.5f, 0.4f));
@@ -80,7 +80,7 @@ void MyProject::Startup( void )
     // Camera Setting
     m_Camera.SetZRange(0.1f, 1000.f);
     m_Camera.SetEyeAtUp(Vector3(0.f, 5.f, -15.f), Vector3(0.f, 0.f, 0.f), Vector3(Math::kYUnitVector));
-    
+
     auto NewCam = new FlyingFPSCamera(m_Camera, Vector3(Math::kYUnitVector));
     NewCam->SetMoveSpeed(10.f);
     NewCam->SetStrafeSpeed(10.f);
@@ -104,11 +104,16 @@ void MyProject::Startup( void )
     L"Particle Simulate",
     L"Particle AfterSim",
     L"Particle Sort",
+    L"Particle KeyGen",          // TiledLayeredWBOIT : 정렬 없이 compact만
+    L"Particle Tiled Prep",
+    L"Particle Tiled",
+    L"Particle Layered Bin",     // slice counting sort (Clear/Prep/Count/Scan/Write)
+    L"Particle Layered Render",  // 타일별 slice WBOIT + under + 조기 종료
     L"Particle Draw",
-    L"Particle Composite" });   // 추가 (WBOIT만 있음)
+    L"Particle Composite" });   // WBOIT / Tiled 계열
 }
 
-void MyProject::Cleanup( void )
+void MyProject::Cleanup(void)
 {
     // Free up resources in an orderly fashion
     m_Particles.Shutdown();
@@ -120,7 +125,7 @@ void MyProject::Cleanup( void )
     Renderer::Shutdown();
 }
 
-void MyProject::Update( float deltaT )
+void MyProject::Update(float deltaT)
 {
     ScopedTimer _prof(L"Update State");
 
@@ -139,7 +144,7 @@ void MyProject::Update( float deltaT )
     if (m_Recorder.Tick(stat.counters.aliveCount))
     {
         const bool useTex = (m_Particles.GetMaterial().constants.features & Particles::kFeatureTexture) != 0;
-        m_LastSaveOk = m_Recorder.AppendCSV("ParticleProfile_v4.csv",
+        m_LastSaveOk = m_Recorder.AppendCSV("ParticleProfile_v5.csv",   // v5 : 타이머/조건 열 추가 (v4와 열 구성이 다름)
             Particles::SettingsCsvHeader() + ",texture",
             Particles::SettingsCsvValues(m_Particles.GetSettings()) + (useTex ? ",1" : ",0"),
             m_RecordTag, stat.maxParticles);
@@ -148,7 +153,7 @@ void MyProject::Update( float deltaT )
     UpdateImGui(deltaT);
 }
 
-void MyProject::UpdateImGui( float deltaT )
+void MyProject::UpdateImGui(float deltaT)
 {
     ImGui::SetNextWindowPos(ImVec2(10.f, 10.f), ImGuiCond_FirstUseEver);
     ImGui::Begin("Debug");
@@ -258,9 +263,22 @@ void MyProject::UpdateImGui( float deltaT )
         ImGui::RadioButton("Premultiplied", &tech, (int)Particles::ParticleTechnique::PremultipliedAlpha); ImGui::SameLine();
         ImGui::RadioButton("WBOIT", &tech, (int)Particles::ParticleTechnique::WeightedOIT); ImGui::SameLine();
         ImGui::RadioButton("Sorted Alpha", &tech, (int)Particles::ParticleTechnique::SortedAlpha);
-        ImGui::RadioButton("Tiled Alpha", &tech, (int)Particles::ParticleTechnique::TiledAlpha);
+        ImGui::RadioButton("Tiled Alpha", &tech, (int)Particles::ParticleTechnique::TiledAlpha); ImGui::SameLine();
+        ImGui::RadioButton("Tiled Layered WBOIT", &tech, (int)Particles::ParticleTechnique::TiledLayeredWBOIT);
 
         m_Draft.technique = (Particles::ParticleTechnique)tech;
+
+        // Layered WBOIT : slice 수가 정확도(정렬에 가까움)와 비용 사이의 다이얼
+        if (m_Draft.technique == Particles::ParticleTechnique::TiledLayeredWBOIT)
+        {
+            int slices = (int)m_Draft.layeredSlices;
+            if (ImGui::SliderInt("Slices", &slices, 1, 64))
+                m_Draft.layeredSlices = (uint32_t)slices;
+            int sliceMode = (int)m_Draft.layeredSliceMode;
+            ImGui::RadioButton("Linear slices", &sliceMode, 0); ImGui::SameLine();
+            ImGui::RadioButton("Log slices", &sliceMode, 1);
+            m_Draft.layeredSliceMode = (uint32_t)sliceMode;
+        }
 
         // WBOIT는 깊이 테스트를 항상 켜므로 체크박스를 잠근다
         const bool depthForced = (m_Draft.technique == Particles::ParticleTechnique::WeightedOIT);
@@ -277,6 +295,10 @@ void MyProject::UpdateImGui( float deltaT )
             else        mat.constants.features &= ~(uint32_t)Particles::kFeatureTexture;
         }
         ImGui::EndDisabled();
+
+        // 조기 종료 확인용 히트맵 (Apply 없이 즉시 반영) : 파랑 = 앞쪽 slice 몇 장만 보고 끝, 빨강 = 끝까지 다 봄
+        if (m_Particles.GetSettings().technique == Particles::ParticleTechnique::TiledLayeredWBOIT)
+            ImGui::Checkbox("Slice heatmap (early-out)", &m_Particles.GetRenderer().LayeredOptions().debugView);
 
         // 측정 조건이 의도와 달라지는 경우 경고
         if (m_Draft.steadyRatio + m_Draft.burstRatio > 1.f)
@@ -344,7 +366,7 @@ void MyProject::UpdateImGui( float deltaT )
         ImGui::ShowDemoWindow(&m_ShowImGuiDemo);
 }
 
-void MyProject::SetCameraPreset( float distance )
+void MyProject::SetCameraPreset(float distance)
 {
     const Vector3 eye = Normalize(Vector3(0.f, 5.f, -15.f)) * distance;
     m_Camera.SetEyeAtUp(eye, Vector3(0.f, 0.f, 0.f), Vector3(Math::kYUnitVector));
@@ -357,7 +379,7 @@ void MyProject::SetCameraPreset( float distance )
     m_CameraController.reset(NewCam);
 }
 
-void MyProject::RenderScene( void )
+void MyProject::RenderScene(void)
 {
     GraphicsContext& gfxContext = GraphicsContext::Begin(L"Scene Render");
 
@@ -375,7 +397,7 @@ void MyProject::RenderScene( void )
     QuadRenderer::BeginDraw(gfxContext, m_Camera.GetViewProjMatrix());
 
     m_Particles.Render(gfxContext, m_Camera);
-   
+
 
     // Finish
     gfxContext.Finish();

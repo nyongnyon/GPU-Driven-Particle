@@ -74,10 +74,21 @@ void ParticleDepthSorter::Shutdown()
 
 Particles::DrawInput ParticleDepthSorter::Sort(GraphicsContext& gfx, const Math::Camera& cam, const Particles::DrawInput& input)
 {
+	return Build(gfx, cam, input, true);
+}
+
+Particles::DrawInput ParticleDepthSorter::Compact(GraphicsContext& gfx, const Math::Camera& cam, const Particles::DrawInput& input)
+{
+	return Build(gfx, cam, input, false);
+}
+
+Particles::DrawInput ParticleDepthSorter::Build(GraphicsContext& gfx, const Math::Camera& cam, const Particles::DrawInput& input, bool sort)
+{
 	EnsureCapacity(input.maxParticle);
 
 	ComputeContext& cc = gfx.GetComputeContext();
-	ScopedTimer _t(L"Particle Sort", cc);
+	// 정렬 비용을 따로 비교할 수 있도록 타이머 이름을 나눈다
+	ScopedTimer _t(sort ? L"Particle Sort" : L"Particle KeyGen", cc);
 
 	// 1) Draw args 초기화 : 6 vertex(quad), InstanceCount = 0
 	alignas(16) static const uint32_t kInitArgs[4] = { 6, 0, 0, 0 };
@@ -108,7 +119,8 @@ Particles::DrawInput ParticleDepthSorter::Sort(GraphicsContext& gfx, const Math:
 	cc.Dispatch1D(input.maxParticle, 64);	// PARTICLE_GROUP_SIZE
 
 	// 3) Sort : key(depth) 내림차순 -> 먼 것부터 그린다. 개수는 GPU의 InstanceCount를 그대로 사용
-	BitonicSort::Sort(cc, m_SortList, m_DrawArgs, kInstanceCountOffset, false, false);
+	if (sort)
+		BitonicSort::Sort(cc, m_SortList, m_DrawArgs, kInstanceCountOffset, false, false);
 
 	// 4) Draw 준비
 	cc.TransitionResource(m_SortList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);

@@ -23,6 +23,7 @@ namespace Particles
 		WeightedOIT,
 		SortedAlpha,	// draw 직전 GPU 깊이 정렬(back-to-front) + alpha blending
 		TiledAlpha,
+		TiledLayeredWBOIT,
 		COUNT
 	};
 
@@ -45,6 +46,7 @@ namespace Particles
 		case ParticleTechnique::WeightedOIT: return "WeightedOIT";
 		case ParticleTechnique::SortedAlpha: return "SortedAlpha";
 		case ParticleTechnique::TiledAlpha: return "TiledAlpha";
+		case ParticleTechnique::TiledLayeredWBOIT: return "TiledLayeredWBOIT";
 		default: return "Unknown";
 		}
 	}

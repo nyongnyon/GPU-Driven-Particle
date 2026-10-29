@@ -90,6 +90,9 @@
     <ClCompile Include="ParticleTiledRenderer.cpp">
       <Filter>Particle\Renderer</Filter>
     </ClCompile>
+    <ClCompile Include="ParticleLayeredRenderer.cpp">
+      <Filter>Particle\Renderer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
@@ -150,6 +153,9 @@
     <ClInclude Include="ParticleTiledRenderer.h">
       <Filter>Particle\Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="ParticleLayeredRenderer.h">
+      <Filter>Particle\Renderer</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="Logo.png">
@@ -195,6 +201,9 @@
       <Filter>Shaders\Particle</Filter>
     </None>
     <None Include="Shaders\ParticleTiledCommon.hlsli">
+      <Filter>Shaders\Particle</Filter>
+    </None>
+    <None Include="Shaders\ParticleLayeredCommon.hlsli">
       <Filter>Shaders\Particle</Filter>
     </None>
   </ItemGroup>
@@ -290,6 +299,24 @@
       <Filter>Shaders\Particle</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ParticleTiledPrepCS.hlsl">
+      <Filter>Shaders\Particle</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleLayeredClearCS.hlsl">
+      <Filter>Shaders\Particle</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleLayeredPrepCS.hlsl">
+      <Filter>Shaders\Particle</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleLayeredCountCS.hlsl">
+      <Filter>Shaders\Particle</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleLayeredScanCS.hlsl">
+      <Filter>Shaders\Particle</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleLayeredWriteCS.hlsl">
+      <Filter>Shaders\Particle</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleLayeredRenderCS.hlsl">
       <Filter>Shaders\Particle</Filter>
     </FxCompile>
   </ItemGroup>

@@ -27,7 +27,6 @@ using namespace Particles;
 
 void ParticleSystem::Initialize(const ParticleSettings& settings, const Math::Vector3& emitterPosition)
 {
-
 	m_Settings = Sanitize(settings);
 
 	m_ParticleRenderer.Initialize();
@@ -138,6 +137,12 @@ void ParticleSystem::ApplyPending()
 void ParticleSystem::ApplyRenderSettings(const ParticleSettings& settings)
 {
 	m_ParticleRenderer.SetTechnique(settings.technique);
+
+	// Layer Option¿ª Log/Linear º±≈√
+	ParticleLayeredRenderer::Options& layered = m_ParticleRenderer.LayeredOptions();
+	layered.sliceCount = settings.layeredSlices;
+	layered.sliceMode = (settings.layeredSliceMode == 0)
+		? ParticleLayeredRenderer::SliceMode::Linear : ParticleLayeredRenderer::SliceMode::Log;
 }
 
 void ParticleSystem::CreatePool(Particles::Mode mode, uint32_t maxParticles)

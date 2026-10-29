@@ -24,6 +24,10 @@ public:
 	Particles::DrawInput Sort(GraphicsContext& gfx, const Math::Camera& cam,
 		const Particles::DrawInput& input);
 
+	// KeyGen만 수행 (BitonicSort 생략) : 살아있고 카메라 앞에 있는 파티클의 (slot, depth)를 순서 없이 모은다
+	// TiledLayeredWBOIT처럼 전역 정렬이 필요 없는 기법용. 반환 형식은 Sort()와 같다
+	Particles::DrawInput Compact(GraphicsContext& gfx, const Math::Camera& cam,
+		const Particles::DrawInput& input);
 private:
 	enum KeyGenVariant : uint32_t
 	{
@@ -32,6 +36,9 @@ private:
 		kKeyGenAlive,		// AliveList
 		kNumKeyGenVariants
 	};
+
+	Particles::DrawInput Build(GraphicsContext& gfx, const Math::Camera& cam,
+		const Particles::DrawInput& input, bool sort);
 
 	static KeyGenVariant SelectKeyGen(Particles::DrawSource source);
 	void EnsureCapacity(uint32_t maxParticles);

@@ -10,7 +10,6 @@
 #include "GpuBuffer.h"
 #include "Camera.h"
 #include "EngineProfiling.h"
-#include "GpuBuffer.h"
 
 #include "CompiledShaders/ParticleDrawReuseVS.h"
 #include "CompiledShaders/ParticleDrawReuseFlagsVS.h"
@@ -65,6 +64,8 @@ void ParticleRenderer::Initialize()
 	CreateTechniques();
 	m_DepthSorter.Initialize();
 	m_TiledRenderer.Initialize();
+	m_LayeredRenderer.Initialize();
+
 	PrewarmPSOs();
 	m_Initialized = true;
 }
@@ -81,7 +82,8 @@ void ParticleRenderer::Shutdown()
 	}
 	m_DepthSorter.Shutdown();
 	m_TiledRenderer.Shutdown();
-\
+	m_LayeredRenderer.Shutdown();
+
 	m_PSOCache.clear();
 	m_Initialized = false;
 }
@@ -96,14 +98,19 @@ void ParticleRenderer::Render(GraphicsContext& gfx, const Math::Camera& cam,
 	if (input.numSrvs == 0 || input.maxParticle == 0)
 		return;
 
-	// TEMP: Tiled Render
 	if (m_Technique == ParticleTechnique::TiledAlpha)
 	{
 		const Particles::DrawInput sorted = m_DepthSorter.Sort(gfx, cam, input);
 		m_TiledRenderer.Render(gfx, cam, sorted, material, target);
 		return;
 	}
-
+	// Tiled Layered WBOIT : 전역 정렬 없이 KeyGen(compact)만 하고 slice로 나눈다
+	else if (m_Technique == ParticleTechnique::TiledLayeredWBOIT)
+	{
+		const Particles::DrawInput compact = m_DepthSorter.Compact(gfx, cam, input);
+		m_LayeredRenderer.Render(gfx, cam, compact, material, target);
+		return;
+	}
 	RenderTechnique& tech = GetTechniqueImpl(m_Technique);
 
 	// 정렬이 필요한 기법이면 Pool 입력을 GPU 깊이 정렬된 입력으로 교체 (Pool은 변경 없음)
@@ -193,6 +200,8 @@ void ParticleRenderer::CreateTechniques()
 	m_Techniques[static_cast<uint32_t>(ParticleTechnique::TiledAlpha)] =
 		std::make_unique<SinglePassTechnique>(BlendPreMultiplied, true);
 
+	m_Techniques[static_cast<uint32_t>(ParticleTechnique::TiledLayeredWBOIT)] =
+		std::make_unique<SinglePassTechnique>(BlendPreMultiplied);
 
 	for (auto& tech : m_Techniques)
 	{

@@ -34,7 +34,9 @@ bool ParticleSettings::operator==(const ParticleSettings& o) const
 		&& SameColor(colorA, o.colorA)
 		&& SameColor(colorB, o.colorB)
 		&& colorIntensity == o.colorIntensity
-		&& technique == o.technique;
+		&& technique == o.technique
+		&& layeredSlices == o.layeredSlices
+		&& layeredSliceMode == o.layeredSliceMode;
 }
 
 namespace Particles
@@ -57,6 +59,9 @@ namespace Particles
 		s.colorA = Clamp01(s.colorA);
 		s.colorB = Clamp01(s.colorB);
 		s.colorIntensity = ClampValue(s.colorIntensity, 0.f, kMaxColorIntensity);
+		s.layeredSlices = ClampValue(s.layeredSlices, 1u, 64u);
+		s.layeredSliceMode = (s.layeredSliceMode == 0) ? 0u : 1u;
+
 		return s;
 	}
 
@@ -115,7 +120,8 @@ namespace Particles
 		char buf[256];
 		snprintf(buf, sizeof(buf), "%s,%.2f,%.2f,%.2f,%.2f,%.2f,%s,%.3f,%s,%.2f",
 			ModeName(s.mode), s.steadyRatio, s.burstRatio, s.burstInterval, s.minLife, s.maxLife,
-			TechniqueName(s.technique), s.particleSize, ColorModeName(s.colorMode), s.colorIntensity);
+			TechniqueName(s.technique), s.particleSize, ColorModeName(s.colorMode), s.colorIntensity,
+			s.layeredSlices, s.layeredSliceMode == 0 ? "Linear" : "Log");
 		return buf;
 	}
 }

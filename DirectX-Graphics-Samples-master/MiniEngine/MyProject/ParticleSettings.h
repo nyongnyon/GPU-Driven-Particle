@@ -28,6 +28,11 @@ struct ParticleSettings
 
 	Particles::ParticleTechnique technique = Particles::ParticleTechnique::Additive;
 
+	// --- TiledLayeredWBOIT 전용 (다른 기법에선 무시) ---
+	uint32_t	layeredSlices = 16;		// 깊이 slice 수 (1 ~ 64). 1 = 순수 WBOIT, 클수록 정렬에 가까움
+	uint32_t	layeredSliceMode = 1;	// 0 = linear, 1 = log
+
+
 	bool operator==(const ParticleSettings& o) const;
 	bool operator!=(const ParticleSettings& o) const { return !(*this == o); }
 };
