@@ -9,7 +9,7 @@ RWTexture2D<float4> Result : register(u3);
 #define TILE_SIZE           16
 #define GROUP_THREADS       (TILE_SIZE * TILE_SIZE)     // 256
 #define MASK_WORDS          (GROUP_THREADS / 32)        // 8
-#define MIN_TRANSMITTANCE   (1.0f / 255.0f)
+#define MIN_TRANSMITTANCE   (10.0f / 255.0f)
 
 // slice 안의 깊이 가중치 : slice가 얇으므로 약하게만 (앞쪽일수록 최대 4배)
 //   0 이면 alpha만으로 평균 (순수 평균)

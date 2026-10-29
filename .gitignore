@@ -439,4 +439,3 @@ FodyWeavers.xsd
 # Per-machine UI state (ImGui layout, main window position)
 imgui.ini
 WindowPos.ini
-Captures/

@@ -25,7 +25,7 @@ namespace
 
 	uint8_t ToByte(float v, bool srgbEncode)
 	{
-		v = std::min(std::max(v, 0.f), 1.f);	// also turns NaN into 0
+		v = min(max(v, 0.f), 1.f);	// also turns NaN into 0
 		if (srgbEncode)
 			v = (v <= 0.0031308f) ? v * 12.92f : 1.055f * std::pow(v, 1.f / 2.4f) - 0.055f;
 		return uint8_t(v * 255.f + 0.5f);

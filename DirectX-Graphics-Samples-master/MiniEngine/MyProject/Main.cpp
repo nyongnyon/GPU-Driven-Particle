@@ -118,7 +118,7 @@ void MyProject::Startup(void)
     m_Particles.Initialize(m_Draft, Vector3(0.f, 0.f, 0.f));
 
     // (선택) 스프라이트 텍스처. 경로는 TexturedQuad::Load에 넘기는 것과 같은 기준
-    m_Particles.GetMaterial().LoadAlbedo(L"Assets/Textures/image2.png");
+    m_Particles.GetMaterial().LoadAlbedo(L"Assets/Textures/image1.png");
 
     m_Recorder.SetTimers({
     L"Particle Update",
