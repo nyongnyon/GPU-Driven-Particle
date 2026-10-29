@@ -23,6 +23,10 @@
 
 #include "ProfileRecorder.h"
 
+#include <fstream>
+
+namespace GameCore { extern HWND g_hWnd; }
+
 using namespace GameCore;
 using namespace Graphics;
 
@@ -49,6 +53,11 @@ private:
     void UpdateImGui(float deltaT);
     void SetCameraPreset(float distance);
 
+    // Main window position is kept between runs (size stays default = same back buffer resolution)
+    void RestoreWindowPos(void);
+    void TrackWindowPos(void);
+    void SaveWindowPos(void);
+
     bool m_ShowImGuiDemo = false;
 
     Camera m_Camera;
@@ -64,6 +73,9 @@ private:
     int  m_RecordFrames = 1000;
     char m_RecordTag[32] = "Tag your Own Name";
     bool m_LastSaveOk = true;
+
+    POINT m_WindowPos = {};
+    bool  m_HasWindowPos = false;
 };
 
 CREATE_APPLICATION(MyProject)
@@ -73,6 +85,8 @@ void MyProject::Startup(void)
     // Rendering Setting
     //g_SceneColorBuffer.SetClearColor(Color(0.5f, 0.5f, 0.4f));
     PostEffects::EnableAdaptation = false;
+
+    RestoreWindowPos();
 
     Renderer::Initialize();
     DebugDraw::Initialize();
@@ -116,6 +130,8 @@ void MyProject::Startup(void)
 
 void MyProject::Cleanup(void)
 {
+    SaveWindowPos();
+
     // Free up resources in an orderly fashion
     m_Particles.Shutdown();
 
@@ -129,6 +145,8 @@ void MyProject::Cleanup(void)
 void MyProject::Update(float deltaT)
 {
     ScopedTimer _prof(L"Update State");
+
+    TrackWindowPos();
 
     // Update something
     m_CameraController->Update(deltaT);
@@ -414,6 +432,50 @@ void MyProject::SetCameraPreset(float distance)
     NewCam->SetMoveSpeed(10.f);
     NewCam->SetStrafeSpeed(10.f);
     m_CameraController.reset(NewCam);
+}
+
+namespace
+{
+    const char* kWindowPosFile = "WindowPos.ini";   // next to imgui.ini (working directory)
+}
+
+void MyProject::RestoreWindowPos(void)
+{
+    int x = 0, y = 0;
+    std::ifstream file(kWindowPosFile);
+    if (!(file >> x >> y))
+        return;
+
+    // Skip if the title bar would land off every monitor (monitor setup changed)
+    const POINT titleBar = { x + 60, y + 10 };
+    if (MonitorFromPoint(titleBar, MONITOR_DEFAULTTONULL) == nullptr)
+        return;
+
+    SetWindowPos(g_hWnd, nullptr, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+}
+
+void MyProject::TrackWindowPos(void)
+{
+    // Closing with the X button destroys the window before Cleanup, so keep the last position here.
+    // Minimized / maximized positions are not kept.
+    if (IsIconic(g_hWnd) || IsZoomed(g_hWnd))
+        return;
+
+    RECT rc;
+    if (GetWindowRect(g_hWnd, &rc))
+    {
+        m_WindowPos = { rc.left, rc.top };
+        m_HasWindowPos = true;
+    }
+}
+
+void MyProject::SaveWindowPos(void)
+{
+    if (!m_HasWindowPos)
+        return;
+
+    std::ofstream file(kWindowPosFile);
+    file << m_WindowPos.x << ' ' << m_WindowPos.y << '\n';
 }
 
 void MyProject::RenderScene(void)
