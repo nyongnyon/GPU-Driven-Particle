@@ -22,6 +22,7 @@
 #include "ParticleUtility.h"
 
 #include "ProfileRecorder.h"
+#include "ImageCapture.h"
 
 #include <fstream>
 
@@ -58,6 +59,9 @@ private:
     void TrackWindowPos(void);
     void SaveWindowPos(void);
 
+    // PNG captures, done after UpdateImGui (before RenderScene) = the frame on screen now
+    void ProcessCaptures(void);
+
     bool m_ShowImGuiDemo = false;
 
     Camera m_Camera;
@@ -76,6 +80,10 @@ private:
 
     POINT m_WindowPos = {};
     bool  m_HasWindowPos = false;
+
+    enum CaptureBits : uint32_t { kCaptureScreen = 1u << 0, kCaptureWBOIT = 1u << 1 };   // WBOIT view i = kCaptureWBOIT << i
+    uint32_t    m_CaptureRequest = 0;
+    std::string m_LastCaptureMsg;
 };
 
 CREATE_APPLICATION(MyProject)
@@ -170,6 +178,7 @@ void MyProject::Update(float deltaT)
     }
 
     UpdateImGui(deltaT);
+    ProcessCaptures();
 }
 
 void MyProject::UpdateImGui(float deltaT)
@@ -200,6 +209,14 @@ void MyProject::UpdateImGui(float deltaT)
     ImGui::SameLine();
     if (ImGui::Button("Far")) SetCameraPreset(40.f);
     ImGui::EndDisabled();
+
+    // Capture (PNG in Captures/). Waits for the GPU (one hitch), so not while recording
+    ImGui::BeginDisabled(m_Recorder.IsBusy());
+    if (ImGui::Button("Save screen"))
+        m_CaptureRequest |= kCaptureScreen;
+    ImGui::EndDisabled();
+    if (!m_LastCaptureMsg.empty())
+        ImGui::TextDisabled("%s", m_LastCaptureMsg.c_str());
     ImGui::End();
 
     ImGui::Begin("Particle");
@@ -400,12 +417,29 @@ void MyProject::UpdateImGui(float deltaT)
                 if (m_Recorder.IsBusy())
                     ImGui::TextDisabled("(frozen while recording)");
 
+                // Save all = screen + every view with the same time stamp
+                const bool canSave = !m_Recorder.IsBusy() && wboit.GetDebugTexture(0) != ImTextureID_Invalid;
+                ImGui::BeginDisabled(!canSave);
+                if (ImGui::Button("Save all"))
+                {
+                    m_CaptureRequest |= kCaptureScreen;
+                    for (uint32_t i = 0; i < WBOITTechnique::kNumDebugViews; ++i)
+                        m_CaptureRequest |= kCaptureWBOIT << i;
+                }
+                ImGui::EndDisabled();
+
                 const float width = ImGui::GetContentRegionAvail().x;
                 const float aspect = wboit.GetDebugWidth() > 0
                     ? float(wboit.GetDebugHeight()) / float(wboit.GetDebugWidth()) : 0.f;
                 for (uint32_t i = 0; i < WBOITTechnique::kNumDebugViews; ++i)
                 {
                     ImGui::SeparatorText(WBOITTechnique::DebugViewName(i));
+                    ImGui::PushID(int(i));
+                    ImGui::BeginDisabled(!canSave);
+                    if (ImGui::SmallButton("Save"))
+                        m_CaptureRequest |= kCaptureWBOIT << i;
+                    ImGui::EndDisabled();
+                    ImGui::PopID();
                     const ImTextureID tex = wboit.GetDebugTexture(i);
                     if (tex == ImTextureID_Invalid)
                         ImGui::TextDisabled("(not drawn yet)");
@@ -419,6 +453,51 @@ void MyProject::UpdateImGui(float deltaT)
 
     if (m_ShowImGuiDemo)
         ImGui::ShowDemoWindow(&m_ShowImGuiDemo);
+}
+
+void MyProject::ProcessCaptures(void)
+{
+    if (m_CaptureRequest == 0)
+        return;
+
+    static const char* kViewFileNames[WBOITTechnique::kNumDebugViews] = { "wboit_color", "wboit_weight", "wboit_reveal" };
+
+    const std::string stamp = ImageCapture::MakeStamp();
+    int saved = 0, failed = 0;
+    std::string lastPath;
+    auto save = [&](ColorBuffer& buffer, const char* name, bool srgbEncode, D3D12_RESOURCE_STATES restoreState)
+    {
+        const std::string path = ImageCapture::MakePath(stamp, name);
+        if (ImageCapture::SavePng(buffer, path, srgbEncode, restoreState))
+        {
+            ++saved;
+            lastPath = path;
+        }
+        else
+            ++failed;
+    };
+
+    // Scene color after PostEffects is linear LDR; the screen shows it with the sRGB curve (no UI in the capture).
+    // RenderScene transitions it back to RENDER_TARGET, so leave it as COPY_SOURCE.
+    if (m_CaptureRequest & kCaptureScreen)
+        save(g_SceneColorBuffer, "screen", true, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+    // WBOIT views are already display values (as shown in ImGui); ImGui samples them, so back to PIXEL_SHADER_RESOURCE
+    WBOITTechnique& wboit = m_Particles.GetRenderer().WBOIT();
+    for (uint32_t i = 0; i < WBOITTechnique::kNumDebugViews; ++i)
+    {
+        if ((m_CaptureRequest & (kCaptureWBOIT << i)) && wboit.GetDebugTexture(i) != ImTextureID_Invalid)
+            save(wboit.GetDebugTarget(i), kViewFileNames[i], false, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+    }
+
+    m_CaptureRequest = 0;
+
+    char msg[256];
+    if (failed == 0)
+        snprintf(msg, sizeof(msg), "saved %d : %s", saved, lastPath.c_str());
+    else
+        snprintf(msg, sizeof(msg), "saved %d, FAILED %d (see Captures/)", saved, failed);
+    m_LastCaptureMsg = msg;
 }
 
 void MyProject::SetCameraPreset(float distance)

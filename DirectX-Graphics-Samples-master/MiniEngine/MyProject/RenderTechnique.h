@@ -72,6 +72,7 @@ public:
 
     DebugOptions&       GetDebugOptions() { return m_DebugOptions; }
     ImTextureID         GetDebugTexture(uint32_t view) const { return view < kNumDebugViews ? m_DebugTex[view] : ImTextureID_Invalid; }
+    ColorBuffer&        GetDebugTarget(uint32_t view) { return m_DebugTargets[view < kNumDebugViews ? view : 0]; }
     uint32_t            GetDebugWidth() const { return m_DebugTargets[0].GetWidth(); }
     uint32_t            GetDebugHeight() const { return m_DebugTargets[0].GetHeight(); }
     static const char*  DebugViewName(uint32_t view);
