@@ -8,11 +8,13 @@
 #include "CommandListManager.h"
 #include "DepthBuffer.h"
 #include "EngineProfiling.h"
+#include "ImGuiLayer.h"
 
 #include "CompiledShaders/ParticleDrawPS.h"
 #include "CompiledShaders/ParticleWBOITPS.h"
 #include "CompiledShaders/ParticleFullscreenVS.h"
 #include "CompiledShaders/ParticleWBOITCompositePS.h"
+#include "CompiledShaders/ParticleWBOITDebugPS.h"
 
 
 using namespace Graphics;
@@ -31,6 +33,13 @@ namespace
 	{
 		kCompositeSRVs = 0, // t0 : Accumulate, t1 : Revealage
 		kNumCompositeRootParams = 1
+	};
+
+	enum DebugRootParams : uint32_t
+	{
+		kDebugSRVs = 0,		// t0 : Accumulate, t1 : Revealage
+		kDebugConstants,	// b0 : weightRange
+		kNumDebugRootParams
 	};
 
 	D3D12_BLEND_DESC MakeWBOITBlend()
@@ -84,6 +93,24 @@ void WBOITTechnique::Initialize()
 	m_CompositePSO.SetPixelShader(g_pParticleWBOITCompositePS, sizeof(g_pParticleWBOITCompositePS));
 	m_CompositePSO.Finalize();
 
+	// Debug pass : Accum / Revealage -> 3 RGBA8 views
+	m_DebugSig.Reset(kNumDebugRootParams, 0);
+	m_DebugSig[kDebugSRVs].InitAsDescriptorRange(
+		D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 2, D3D12_SHADER_VISIBILITY_PIXEL);
+	m_DebugSig[kDebugConstants].InitAsConstants(0, 1, D3D12_SHADER_VISIBILITY_PIXEL);
+	m_DebugSig.Finalize(L"Particle WBOIT Debug RootSig");
+
+	static const DXGI_FORMAT kDebugFormats[kNumDebugViews] = { kDebugFormat, kDebugFormat, kDebugFormat };
+	m_DebugPSO.SetRootSignature(m_DebugSig);
+	m_DebugPSO.SetRasterizerState(RasterizerTwoSided);
+	m_DebugPSO.SetBlendState(BlendDisable);
+	m_DebugPSO.SetDepthStencilState(DepthStateDisabled);
+	m_DebugPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+	m_DebugPSO.SetRenderTargetFormats(kNumDebugViews, kDebugFormats, DXGI_FORMAT_UNKNOWN);
+	m_DebugPSO.SetVertexShader(g_pParticleFullscreenVS, sizeof(g_pParticleFullscreenVS));
+	m_DebugPSO.SetPixelShader(g_pParticleWBOITDebugPS, sizeof(g_pParticleWBOITDebugPS));
+	m_DebugPSO.Finalize();
+
 	m_Accum.SetClearColor(Color(0.f, 0.f, 0.f, 0.f));
 	m_Reveal.SetClearColor(Color(1.f, 1.f, 1.f, 1.f));
 
@@ -93,6 +120,7 @@ void WBOITTechnique::Shutdown()
 {
 	m_Accum.Destroy();
 	m_Reveal.Destroy();
+	DestroyDebugTargets();
 }
 
 void WBOITTechnique::ConfigurePSO(GraphicsPSO& pso) const
@@ -156,4 +184,80 @@ void WBOITTechnique::EnsureSize(uint32_t width, uint32_t height)
 
 	m_Accum.Create(L"Particle WBOIT Accum", width, height, 1, kAccumFormat);
 	m_Reveal.Create(L"Particle WBOIT Revealage", width, height, 1, kRevealFormat);
+}
+
+void WBOITTechnique::DrawDebug(GraphicsContext& gfx, const ParticleRenderTarget& target)
+{
+	if (!m_DebugOptions.enabled || m_Accum.GetWidth() == 0)
+		return;
+
+	EnsureDebugSize(m_Accum.GetWidth(), m_Accum.GetHeight());
+
+	ScopedTimer _t(L"Particle WBOIT Debug", gfx);
+
+	// Accum / Revealage are already PIXEL_SHADER_RESOURCE after EndDraw
+	for (ColorBuffer& rt : m_DebugTargets)
+		gfx.TransitionResource(rt, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	gfx.FlushResourceBarriers();
+
+	const D3D12_CPU_DESCRIPTOR_HANDLE rtvs[kNumDebugViews] =
+		{ m_DebugTargets[0].GetRTV(), m_DebugTargets[1].GetRTV(), m_DebugTargets[2].GetRTV() };
+	gfx.SetRenderTargets(kNumDebugViews, rtvs);
+
+	gfx.SetRootSignature(m_DebugSig);
+	gfx.SetPipelineState(m_DebugPSO);
+	gfx.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	const D3D12_CPU_DESCRIPTOR_HANDLE srvs[2] = { m_Accum.GetSRV(), m_Reveal.GetSRV() };
+	gfx.SetDynamicDescriptors(kDebugSRVs, 0, 2, srvs);
+	gfx.SetConstants(kDebugConstants, m_DebugOptions.weightRange);
+
+	gfx.Draw(3);	// full screen triangle
+
+	// ImGui samples these later in the UI pass
+	for (ColorBuffer& rt : m_DebugTargets)
+		gfx.TransitionResource(rt, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+	gfx.SetRenderTarget(target.color.GetRTV(), target.depth.GetDSV());
+}
+
+const char* WBOITTechnique::DebugViewName(uint32_t view)
+{
+	switch (view)
+	{
+	case kDebugColor:	return "Accum rgb / a (average color)";
+	case kDebugWeight:	return "Accum a (weight sum, log)";
+	case kDebugReveal:	return "Revealage (white = empty)";
+	default:			return "None";
+	}
+}
+
+void WBOITTechnique::EnsureDebugSize(uint32_t width, uint32_t height)
+{
+	if (m_DebugTargets[0].GetWidth() == width && m_DebugTargets[0].GetHeight() == height)
+		return;
+
+	DestroyDebugTargets();
+
+	static const wchar_t* kNames[kNumDebugViews] =
+		{ L"Particle WBOIT Debug Color", L"Particle WBOIT Debug Weight", L"Particle WBOIT Debug Reveal" };
+	for (uint32_t i = 0; i < kNumDebugViews; ++i)
+	{
+		m_DebugTargets[i].Create(kNames[i], width, height, 1, kDebugFormat);
+		m_DebugTex[i] = ImGuiLayer::RegisterTexture(m_DebugTargets[i].GetSRV());
+	}
+}
+
+void WBOITTechnique::DestroyDebugTargets()
+{
+	if (m_DebugTargets[0].GetWidth() == 0)
+		return;
+
+	g_CommandManager.IdleGPU();	// ImGui may still be sampling the old views
+	for (uint32_t i = 0; i < kNumDebugViews; ++i)
+	{
+		ImGuiLayer::UnregisterTexture(m_DebugTex[i]);
+		m_DebugTex[i] = ImTextureID_Invalid;
+		m_DebugTargets[i].Destroy();
+	}
 }

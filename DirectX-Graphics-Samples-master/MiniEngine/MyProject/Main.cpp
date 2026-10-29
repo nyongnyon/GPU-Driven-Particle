@@ -58,6 +58,7 @@ private:
     ParticleSettings        m_Draft;
     bool                    m_FixedDt = true;
     bool                    m_Paused = false;     // time stop: simulate with dt = 0
+    bool                    m_ShowWBOITTargets = false;
 
     ProfileRecorder m_Recorder;
     int  m_RecordFrames = 1000;
@@ -300,6 +301,10 @@ void MyProject::UpdateImGui(float deltaT)
         if (m_Particles.GetSettings().technique == Particles::ParticleTechnique::TiledLayeredWBOIT)
             ImGui::Checkbox("Slice heatmap (early-out)", &m_Particles.GetRenderer().LayeredOptions().debugView);
 
+        // WBOIT render targets in a separate window (the extra pass is skipped while recording)
+        if (m_Particles.GetSettings().technique == Particles::ParticleTechnique::WeightedOIT)
+            ImGui::Checkbox("Show WBOIT targets", &m_ShowWBOITTargets);
+
         // 측정 조건이 의도와 달라지는 경우 경고
         if (m_Draft.steadyRatio + m_Draft.burstRatio > 1.f)
             ImGui::TextColored(kWarn, "steady + burst > 1 : emits will be dropped");
@@ -361,6 +366,38 @@ void MyProject::UpdateImGui(float deltaT)
 
     ImGui::End();
 
+    {
+        WBOITTechnique& wboit = m_Particles.GetRenderer().WBOIT();
+        const bool wboitApplied = (m_Particles.GetSettings().technique == Particles::ParticleTechnique::WeightedOIT);
+        const bool showTargets = m_ShowWBOITTargets && wboitApplied;
+        wboit.GetDebugOptions().enabled = showTargets && !m_Recorder.IsBusy();
+
+        if (showTargets)
+        {
+            ImGui::SetNextWindowSize(ImVec2(360.f, 760.f), ImGuiCond_FirstUseEver);
+            if (ImGui::Begin("WBOIT Targets", &m_ShowWBOITTargets))
+            {
+                ImGui::SliderFloat("Weight range", &wboit.GetDebugOptions().weightRange, 1.f, 100000.f, "%.0f",
+                    ImGuiSliderFlags_Logarithmic);
+                if (m_Recorder.IsBusy())
+                    ImGui::TextDisabled("(frozen while recording)");
+
+                const float width = ImGui::GetContentRegionAvail().x;
+                const float aspect = wboit.GetDebugWidth() > 0
+                    ? float(wboit.GetDebugHeight()) / float(wboit.GetDebugWidth()) : 0.f;
+                for (uint32_t i = 0; i < WBOITTechnique::kNumDebugViews; ++i)
+                {
+                    ImGui::SeparatorText(WBOITTechnique::DebugViewName(i));
+                    const ImTextureID tex = wboit.GetDebugTexture(i);
+                    if (tex == ImTextureID_Invalid)
+                        ImGui::TextDisabled("(not drawn yet)");
+                    else
+                        ImGui::Image(tex, ImVec2(width, width * aspect));
+                }
+            }
+            ImGui::End();
+        }
+    }
 
     if (m_ShowImGuiDemo)
         ImGui::ShowDemoWindow(&m_ShowImGuiDemo);

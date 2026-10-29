@@ -31,6 +31,7 @@ public:
 	Particles::ParticleTechnique GetTechnique() const { return m_Technique; }
 
 	ParticleLayeredRenderer::Options& LayeredOptions() { return m_LayeredRenderer.GetOptions(); }
+	WBOITTechnique& WBOIT();	// debug views of the WBOIT render targets
 
 
 private:

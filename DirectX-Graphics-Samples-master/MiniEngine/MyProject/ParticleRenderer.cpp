@@ -165,6 +165,7 @@ void ParticleRenderer::Render(GraphicsContext& gfx, const Math::Camera& cam,
 
 
 	tech.EndDraw(gfx, target);
+	tech.DrawDebug(gfx, target);
 }
 
 
@@ -266,6 +267,11 @@ uint32_t ParticleRenderer::PipelineKey::Pack() const
 	return  (static_cast<uint32_t>(source) & 0xF)
 		| ((static_cast<uint32_t>(output) & 0xF) << 4)
 		| (shaderVariant << 8);
+}
+
+WBOITTechnique& ParticleRenderer::WBOIT()
+{
+	return static_cast<WBOITTechnique&>(GetTechniqueImpl(ParticleTechnique::WeightedOIT));
 }
 
 RenderTechnique& ParticleRenderer::GetTechniqueImpl(ParticleTechnique t)
