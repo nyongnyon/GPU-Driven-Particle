@@ -23,6 +23,10 @@
 
 #include "ProfileRecorder.h"
 
+#include <fstream>
+
+namespace GameCore { extern HWND g_hWnd; }
+
 using namespace GameCore;
 using namespace Graphics;
 
@@ -49,6 +53,11 @@ private:
     void UpdateImGui(float deltaT);
     void SetCameraPreset(float distance);
 
+    // Main window position is kept between runs (size stays default = same back buffer resolution)
+    void RestoreWindowPos(void);
+    void TrackWindowPos(void);
+    void SaveWindowPos(void);
+
     bool m_ShowImGuiDemo = false;
 
     Camera m_Camera;
@@ -58,11 +67,15 @@ private:
     ParticleSettings        m_Draft;
     bool                    m_FixedDt = true;
     bool                    m_Paused = false;     // time stop: simulate with dt = 0
+    bool                    m_ShowWBOITTargets = false;
 
     ProfileRecorder m_Recorder;
     int  m_RecordFrames = 1000;
     char m_RecordTag[32] = "Tag your Own Name";
     bool m_LastSaveOk = true;
+
+    POINT m_WindowPos = {};
+    bool  m_HasWindowPos = false;
 };
 
 CREATE_APPLICATION(MyProject)
@@ -72,6 +85,8 @@ void MyProject::Startup(void)
     // Rendering Setting
     //g_SceneColorBuffer.SetClearColor(Color(0.5f, 0.5f, 0.4f));
     PostEffects::EnableAdaptation = false;
+
+    RestoreWindowPos();
 
     Renderer::Initialize();
     DebugDraw::Initialize();
@@ -115,6 +130,8 @@ void MyProject::Startup(void)
 
 void MyProject::Cleanup(void)
 {
+    SaveWindowPos();
+
     // Free up resources in an orderly fashion
     m_Particles.Shutdown();
 
@@ -128,6 +145,8 @@ void MyProject::Cleanup(void)
 void MyProject::Update(float deltaT)
 {
     ScopedTimer _prof(L"Update State");
+
+    TrackWindowPos();
 
     // Update something
     m_CameraController->Update(deltaT);
@@ -300,6 +319,10 @@ void MyProject::UpdateImGui(float deltaT)
         if (m_Particles.GetSettings().technique == Particles::ParticleTechnique::TiledLayeredWBOIT)
             ImGui::Checkbox("Slice heatmap (early-out)", &m_Particles.GetRenderer().LayeredOptions().debugView);
 
+        // WBOIT render targets in a separate window (the extra pass is skipped while recording)
+        if (m_Particles.GetSettings().technique == Particles::ParticleTechnique::WeightedOIT)
+            ImGui::Checkbox("Show WBOIT targets", &m_ShowWBOITTargets);
+
         // 측정 조건이 의도와 달라지는 경우 경고
         if (m_Draft.steadyRatio + m_Draft.burstRatio > 1.f)
             ImGui::TextColored(kWarn, "steady + burst > 1 : emits will be dropped");
@@ -361,6 +384,38 @@ void MyProject::UpdateImGui(float deltaT)
 
     ImGui::End();
 
+    {
+        WBOITTechnique& wboit = m_Particles.GetRenderer().WBOIT();
+        const bool wboitApplied = (m_Particles.GetSettings().technique == Particles::ParticleTechnique::WeightedOIT);
+        const bool showTargets = m_ShowWBOITTargets && wboitApplied;
+        wboit.GetDebugOptions().enabled = showTargets && !m_Recorder.IsBusy();
+
+        if (showTargets)
+        {
+            ImGui::SetNextWindowSize(ImVec2(360.f, 760.f), ImGuiCond_FirstUseEver);
+            if (ImGui::Begin("WBOIT Targets", &m_ShowWBOITTargets))
+            {
+                ImGui::SliderFloat("Weight range", &wboit.GetDebugOptions().weightRange, 1.f, 100000.f, "%.0f",
+                    ImGuiSliderFlags_Logarithmic);
+                if (m_Recorder.IsBusy())
+                    ImGui::TextDisabled("(frozen while recording)");
+
+                const float width = ImGui::GetContentRegionAvail().x;
+                const float aspect = wboit.GetDebugWidth() > 0
+                    ? float(wboit.GetDebugHeight()) / float(wboit.GetDebugWidth()) : 0.f;
+                for (uint32_t i = 0; i < WBOITTechnique::kNumDebugViews; ++i)
+                {
+                    ImGui::SeparatorText(WBOITTechnique::DebugViewName(i));
+                    const ImTextureID tex = wboit.GetDebugTexture(i);
+                    if (tex == ImTextureID_Invalid)
+                        ImGui::TextDisabled("(not drawn yet)");
+                    else
+                        ImGui::Image(tex, ImVec2(width, width * aspect));
+                }
+            }
+            ImGui::End();
+        }
+    }
 
     if (m_ShowImGuiDemo)
         ImGui::ShowDemoWindow(&m_ShowImGuiDemo);
@@ -377,6 +432,50 @@ void MyProject::SetCameraPreset(float distance)
     NewCam->SetMoveSpeed(10.f);
     NewCam->SetStrafeSpeed(10.f);
     m_CameraController.reset(NewCam);
+}
+
+namespace
+{
+    const char* kWindowPosFile = "WindowPos.ini";   // next to imgui.ini (working directory)
+}
+
+void MyProject::RestoreWindowPos(void)
+{
+    int x = 0, y = 0;
+    std::ifstream file(kWindowPosFile);
+    if (!(file >> x >> y))
+        return;
+
+    // Skip if the title bar would land off every monitor (monitor setup changed)
+    const POINT titleBar = { x + 60, y + 10 };
+    if (MonitorFromPoint(titleBar, MONITOR_DEFAULTTONULL) == nullptr)
+        return;
+
+    SetWindowPos(g_hWnd, nullptr, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+}
+
+void MyProject::TrackWindowPos(void)
+{
+    // Closing with the X button destroys the window before Cleanup, so keep the last position here.
+    // Minimized / maximized positions are not kept.
+    if (IsIconic(g_hWnd) || IsZoomed(g_hWnd))
+        return;
+
+    RECT rc;
+    if (GetWindowRect(g_hWnd, &rc))
+    {
+        m_WindowPos = { rc.left, rc.top };
+        m_HasWindowPos = true;
+    }
+}
+
+void MyProject::SaveWindowPos(void)
+{
+    if (!m_HasWindowPos)
+        return;
+
+    std::ofstream file(kWindowPosFile);
+    file << m_WindowPos.x << ' ' << m_WindowPos.y << '\n';
 }
 
 void MyProject::RenderScene(void)
