@@ -73,6 +73,7 @@
     <ClInclude Include="ParticleTypes.h" />
     <ClInclude Include="ParticleUtility.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="ImageCapture.h" />
     <ClInclude Include="ProfileRecorder.h" />
     <ClInclude Include="SlotReusePool.h" />
     <ClInclude Include="TexturedQuad.h" />
@@ -97,6 +98,7 @@
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="ImageCapture.cpp" />
     <ClCompile Include="ProfileRecorder.cpp" />
     <ClCompile Include="SlotReusePool.cpp" />
     <ClCompile Include="TexturedQuad.cpp" />
