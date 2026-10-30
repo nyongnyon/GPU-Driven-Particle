@@ -50,6 +50,5 @@ void main( uint3 DTid : SV_DispatchThreadID )
             SliceData.InterlockedAdd(SLICE_DATA_VISIBLE, numVisible, val);
         }
     }
-    // depth -> uint
     
 }

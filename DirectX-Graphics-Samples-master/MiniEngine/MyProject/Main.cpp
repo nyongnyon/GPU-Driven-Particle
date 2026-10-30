@@ -24,6 +24,15 @@
 #include "ProfileRecorder.h"
 #include "ImageCapture.h"
 
+#include "Model.h"
+#include "ModelLoader.h"
+#include "ShadowCamera.h"
+#include "SSAO.h"
+#include "TemporalEffects.h"
+#include "TextureManager.h"
+
+using Renderer::MeshSorter;
+
 #include <fstream>
 
 namespace GameCore { extern HWND g_hWnd; }
@@ -92,6 +101,14 @@ private:
     enum CaptureBits : uint32_t { kCaptureScreen = 1u << 0, kCaptureWBOIT = 1u << 1 };   // WBOIT view i = kCaptureWBOIT << i
     uint32_t    m_CaptureRequest = 0;
     std::string m_LastCaptureMsg;
+
+
+    // -------------------------
+    //          Sponza
+    // -------------------------
+    ModelInstance m_Sponza;
+    ShadowCamera  m_SunShadowCamera;
+
 };
 
 CREATE_APPLICATION(MyProject)
@@ -101,7 +118,7 @@ void MyProject::Startup(void)
     // Rendering Setting
     //g_SceneColorBuffer.SetClearColor(Color(0.5f, 0.5f, 0.4f));
     PostEffects::EnableAdaptation = false;
-
+    SSAO::Enable = false;
     RestoreWindowPos();
 
     Renderer::Initialize();
@@ -143,6 +160,14 @@ void MyProject::Startup(void)
     L"Particle Layered Render",  // 타일별 slice WBOIT + under + 조기 종료
     L"Particle Draw",
     L"Particle Composite" });   // WBOIT / Tiled 계열
+
+    TextureRef diffIBL = TextureManager::LoadDDSFromFile(L"../ModelViewer/Textures/Atrium_diffuseIBL.dds");
+    TextureRef specIBL = TextureManager::LoadDDSFromFile(L"../ModelViewer/Textures/Atrium_specularIBL.dds");
+    Renderer::SetIBLTextures(diffIBL, specIBL);
+
+    m_Sponza = Renderer::LoadModel(L"../ModelViewer/Sponza/pbr/sponza2.gltf", false);
+    m_Sponza.Resize(50.0f);
+
 }
 
 void MyProject::Cleanup(void)
@@ -150,6 +175,8 @@ void MyProject::Cleanup(void)
     SaveWindowPos();
 
     // Free up resources in an orderly fashion
+    m_Sponza = nullptr;
+
     m_Particles.Shutdown();
 
     m_CameraController.reset();
@@ -189,6 +216,10 @@ void MyProject::Update(float deltaT)
 
     UpdateImGui(deltaT);
     ProcessCaptures();
+
+    GraphicsContext& gfx = GraphicsContext::Begin(L"Scene Update");
+    m_Sponza.Update(gfx, deltaT);
+    gfx.Finish();
 }
 
 void MyProject::UpdateImGui(float deltaT)
@@ -624,22 +655,68 @@ void MyProject::RenderScene(void)
 {
     GraphicsContext& gfxContext = GraphicsContext::Begin(L"Scene Render");
 
-    gfxContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
-    gfxContext.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
+    D3D12_VIEWPORT vp = { 0, 0, (float)g_SceneColorBuffer.GetWidth(), (float)g_SceneColorBuffer.GetHeight(), 0, 1 };
+    D3D12_RECT     sc = { 0, 0, (LONG)g_SceneColorBuffer.GetWidth(), (LONG)g_SceneColorBuffer.GetHeight() };
 
-    gfxContext.ClearColor(g_SceneColorBuffer);
+    // 조명/그림자 상수
+    const float ori = -0.5f, inc = 0.75f;
+    Vector3 sunDir = Normalize(Vector3(cosf(ori) * cosf(inc * 1.5708f), sinf(inc * 1.5708f),
+        sinf(ori) * cosf(inc * 1.5708f)));    m_SunShadowCamera.UpdateMatrix(-sunDir, m_Sponza.GetCenter(), Vector3(m_Sponza.GetRadius() * 2.f),
+        (uint32_t)g_ShadowBuffer.GetWidth(), (uint32_t)g_ShadowBuffer.GetHeight(), 16);
+
+    GlobalConstants globals;
+    globals.ViewProjMatrix = m_Camera.GetViewProjMatrix();
+    globals.SunShadowMatrix = m_SunShadowCamera.GetShadowMatrix();
+    globals.CameraPos = m_Camera.GetPosition();
+    globals.SunDirection = sunDir;
+    globals.SunIntensity = Vector3(4.0f);
+
+    // ① 깊이 프리패스
+    gfxContext.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
     gfxContext.ClearDepth(g_SceneDepthBuffer);
 
-    gfxContext.SetRenderTarget(g_SceneColorBuffer.GetRTV(), g_SceneDepthBuffer.GetDSV());
-    gfxContext.SetViewportAndScissor(0, 0, g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight());
+    MeshSorter sorter(MeshSorter::kDefault);
+    sorter.SetCamera(m_Camera);
+    sorter.SetViewport(vp);
+    sorter.SetScissor(sc);
+    sorter.SetDepthStencilTarget(g_SceneDepthBuffer);
+    sorter.AddRenderTarget(g_SceneColorBuffer);
+    m_Sponza.Render(sorter);
+    sorter.Sort();
+    sorter.RenderMeshes(MeshSorter::kZPass, gfxContext, globals);
 
-    // Rendering something
+    // ② AO 버퍼를 흰색으로 클리어 + g_LinearDepth 생성 (Enable=false 경로)
+    SSAO::Render(gfxContext, m_Camera);
+    // ← 여기서 깊이 다운샘플 CS를 돌리면 됨 (입력: g_LinearDepth[TemporalEffects::GetFrameIndexMod2()])
+
+    // ③ 그림자 맵
+    {
+        MeshSorter shadowSorter(MeshSorter::kShadows);
+        shadowSorter.SetCamera(m_SunShadowCamera);
+        shadowSorter.SetDepthStencilTarget(g_ShadowBuffer);
+        m_Sponza.Render(shadowSorter);
+        shadowSorter.Sort();
+        shadowSorter.RenderMeshes(MeshSorter::kZPass, gfxContext, globals);
+    }
+
+    // ④ 불투명 컬러 패스
+    gfxContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
+    gfxContext.ClearColor(g_SceneColorBuffer);
+    gfxContext.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+    gfxContext.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_READ, true);
+    gfxContext.SetRenderTarget(g_SceneColorBuffer.GetRTV(), g_SceneDepthBuffer.GetDSV_DepthReadOnly());
+    gfxContext.SetViewportAndScissor(vp, sc);
+    sorter.RenderMeshes(MeshSorter::kOpaque, gfxContext, globals);
+    Renderer::DrawSkybox(gfxContext, m_Camera, vp, sc);
+    sorter.RenderMeshes(MeshSorter::kTransparent, gfxContext, globals);
+
+    // ⑤ 기존 내용 (디버그 + 파티클)
+    gfxContext.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
+    gfxContext.SetRenderTarget(g_SceneColorBuffer.GetRTV(), g_SceneDepthBuffer.GetDSV());
+    gfxContext.SetViewportAndScissor(vp, sc);
     DebugDraw::Render(gfxContext, m_Camera.GetViewProjMatrix());
     QuadRenderer::BeginDraw(gfxContext, m_Camera.GetViewProjMatrix());
-
     m_Particles.Render(gfxContext, m_Camera);
 
-
-    // Finish
     gfxContext.Finish();
 }
