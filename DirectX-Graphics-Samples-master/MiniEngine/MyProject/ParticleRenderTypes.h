@@ -3,6 +3,7 @@
 #include <cstdint>
 
 class ByteAddressBuffer;
+class StructuredBuffer;
 
 namespace Particles
 {
@@ -20,11 +21,36 @@ namespace Particles
 	{
 		Additive = 0,
 		PremultipliedAlpha,
-		WeightedOIT,
+		WeightedOIT,		// 레거시 : 전체 강제 모드에서만 (이미터별 선택 불가)
 		SortedAlpha,	// draw 직전 GPU 깊이 정렬(back-to-front) + alpha blending
 		TiledAlpha,
-		TiledLayeredWBOIT,
+		TiledLayeredWBOIT,	// 레거시 : 전체 강제 모드에서만 (이미터별 선택 불가)
 		COUNT
+	};
+
+	// 이미터마다 고를 수 있는 기법 (WBOIT 계열은 레거시라 제외)
+	inline bool IsEmitterTechnique(ParticleTechnique t)
+	{
+		return t == ParticleTechnique::Additive || t == ParticleTechnique::PremultipliedAlpha
+			|| t == ParticleTechnique::SortedAlpha || t == ParticleTechnique::TiledAlpha;
+	}
+
+	// 이미터별 기법 그룹을 그리는 고정 순서. 그룹 사이의 앞뒤는 섞이지 않으므로 순서라도 매번 같게
+	static const ParticleTechnique kGroupDrawOrder[] =
+	{
+		ParticleTechnique::Additive,
+		ParticleTechnique::PremultipliedAlpha,
+		ParticleTechnique::SortedAlpha,
+		ParticleTechnique::TiledAlpha,
+	};
+
+	inline uint32_t TechniqueBit(ParticleTechnique t) { return 1u << static_cast<uint32_t>(t); }
+
+	// KeyGen 필터 : groupTable[Particle.emitterId] == group 인 파티클만 남긴다
+	struct GroupFilter
+	{
+		StructuredBuffer*	groupTable = nullptr;	// uint x ParticleWorld::kMaxEmitters (값 = ParticleTechnique)
+		uint32_t			group = 0;
 	};
 
 	struct DrawInput

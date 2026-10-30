@@ -26,7 +26,8 @@ namespace
 		kNumSortRootParams,
 	};
 
-	constexpr uint32_t kNumSortSRVs = 3;	// DrawInput의 t0 ~ t2 그대로
+	constexpr uint32_t kNumSortSRVs = 4;	// DrawInput의 t0 ~ t2 그대로 + t3 : EmitterGroups
+	constexpr uint32_t kNoFilter = 0xFFFFFFFFu;	// HLSL SORT_NO_FILTER
 	constexpr uint32_t kNumSortUAVs = 2;	// u0 : SortList, u1 : DrawArgs
 
 	// D3D12_DRAW_ARGUMENTS 내 InstanceCount 위치 (BitonicSort의 counter offset)
@@ -35,7 +36,7 @@ namespace
 	struct alignas(16) SortConstants
 	{
 		DirectX::XMFLOAT3	camPosition;	uint32_t maxParticles;
-		DirectX::XMFLOAT3	camForward;		float pad;
+		DirectX::XMFLOAT3	camForward;		uint32_t filterGroup;
 	};
 	static_assert(sizeof(SortConstants) == 32, "HLSL cbuffer SortConstants(32 B)와 일치해야 함");
 }
@@ -63,26 +64,30 @@ void ParticleDepthSorter::Initialize()
 	}
 
 	m_DrawArgs.Create(L"Particle Sorted Draw Args", 4, sizeof(uint32_t));
+
+	const uint32_t zero = 0;
+	m_NoFilterTable.Create(L"Particle Sort No Filter Table", 1, sizeof(uint32_t), &zero);
 }
 
 void ParticleDepthSorter::Shutdown()
 {
 	m_SortList.Destroy();
 	m_DrawArgs.Destroy();
+	m_NoFilterTable.Destroy();
 	m_Capacity = 0;
 }
 
-Particles::DrawInput ParticleDepthSorter::Sort(GraphicsContext& gfx, const Math::Camera& cam, const Particles::DrawInput& input)
+Particles::DrawInput ParticleDepthSorter::Sort(GraphicsContext& gfx, const Math::Camera& cam, const Particles::DrawInput& input, const Particles::GroupFilter* filter)
 {
-	return Build(gfx, cam, input, true);
+	return Build(gfx, cam, input, true, filter);
 }
 
-Particles::DrawInput ParticleDepthSorter::Compact(GraphicsContext& gfx, const Math::Camera& cam, const Particles::DrawInput& input)
+Particles::DrawInput ParticleDepthSorter::Compact(GraphicsContext& gfx, const Math::Camera& cam, const Particles::DrawInput& input, const Particles::GroupFilter* filter)
 {
-	return Build(gfx, cam, input, false);
+	return Build(gfx, cam, input, false, filter);
 }
 
-Particles::DrawInput ParticleDepthSorter::Build(GraphicsContext& gfx, const Math::Camera& cam, const Particles::DrawInput& input, bool sort)
+Particles::DrawInput ParticleDepthSorter::Build(GraphicsContext& gfx, const Math::Camera& cam, const Particles::DrawInput& input, bool sort, const Particles::GroupFilter* filter)
 {
 	EnsureCapacity(input.maxParticle);
 
@@ -97,7 +102,11 @@ Particles::DrawInput ParticleDepthSorter::Build(GraphicsContext& gfx, const Math
 
 	// 2) KeyGen : (slot, depth) compact append + InstanceCount 누적
 	cc.TransitionResource(m_DrawArgs, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-	cc.TransitionResource(m_SortList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
+	cc.TransitionResource(m_SortList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+	// t3 : 필터가 있으면 이미터 -> 기법 테이블, 없으면 빈 테이블 (FilterGroup = kNoFilter라 읽지 않음)
+	StructuredBuffer& groupTable = (filter && filter->groupTable) ? *filter->groupTable : m_NoFilterTable;
+	cc.TransitionResource(groupTable, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, true);
 
 	cc.SetRootSignature(m_KeyGenSignature);
 	cc.SetPipelineState(m_KeyGenPSO[SelectKeyGen(input.source)]);
@@ -106,11 +115,13 @@ Particles::DrawInput ParticleDepthSorter::Build(GraphicsContext& gfx, const Math
 	XMStoreFloat3(&sc.camPosition, cam.GetPosition());
 	XMStoreFloat3(&sc.camForward, cam.GetForwardVec());
 	sc.maxParticles = input.maxParticle;
+	sc.filterGroup = (filter && filter->groupTable) ? filter->group : kNoFilter;
 	cc.SetDynamicConstantBufferView(kSortCBV, sizeof(sc), &sc);
 
 	D3D12_CPU_DESCRIPTOR_HANDLE srvs[kNumSortSRVs];
-	for (uint32_t i = 0; i < kNumSortSRVs; ++i)
+	for (uint32_t i = 0; i < 3; ++i)
 		srvs[i] = (i < input.numSrvs) ? input.srvs[i] : input.srvs[0];	// 안 쓰는 슬롯은 t0로 채움
+	srvs[3] = groupTable.GetSRV();
 	cc.SetDynamicDescriptors(kSortSRV, 0, kNumSortSRVs, srvs);
 
 	const D3D12_CPU_DESCRIPTOR_HANDLE uavs[kNumSortUAVs] = { m_SortList.GetUAV(), m_DrawArgs.GetUAV() };
