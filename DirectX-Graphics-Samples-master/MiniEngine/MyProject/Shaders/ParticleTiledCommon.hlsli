@@ -11,6 +11,8 @@ cbuffer TileConstants : register(b0)
     float2 ProjScale;
     float HeatMax;
     float NearClip;
+    float2 DepthParams;     // 투영 행렬의 (Q1 = _33, Q2 = _43) : 씬 깊이 -> 카메라 거리
+    float2 TilePad;
 };
 
 struct ScreenQuad
@@ -43,6 +45,14 @@ bool GetScreenQuad(Particle p, out ScreenQuad quad, out float viewDepth)
     quad.center = float2(ndc.x * 0.5f + 0.5f, 0.5f - ndc.y * 0.5f) * ScreenSize;
     quad.halfExt = p.size * ProjScale / clip.w * 0.5f * ScreenSize;
     return true;
+}
+
+// 깊이 버퍼 값(reverse-Z, 가까울수록 1) -> 카메라에서의 거리 (clip.w와 같은 단위)
+//   MiniEngine : z_clip = Q1 * z + Q2, w = -z (z = -d)  ->  depth = Q2 / d - Q1  ->  d = Q2 / (depth + Q1)
+//   depth = 1 -> near, depth = 0 (클리어 / 하늘) -> far
+float SceneViewDepth(float depth)
+{
+    return DepthParams.y / max(depth + DepthParams.x, 1e-7f);
 }
 
 // FOR PREP

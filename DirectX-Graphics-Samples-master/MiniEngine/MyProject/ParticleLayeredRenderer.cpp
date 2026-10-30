@@ -26,8 +26,8 @@ namespace
 {
 	enum LayeredRootParams : uint32_t { kTileCBV = 0, kLayeredCBV, kSRVs, kUAVs, kNumRootParams };
 
-	// t0 particles, t1 KeyList(정렬 안 됨), t2 DrawArgs(개수), t3 TiledParticles, t4 SliceList, t5 SliceData
-	constexpr uint32_t kNumSRVs = 6;
+	// t0 particles, t1 KeyList(정렬 안 됨), t2 DrawArgs(개수), t3 TiledParticles, t4 SliceList, t5 SliceData, t6 씬 깊이
+	constexpr uint32_t kNumSRVs = 7;
 	// u0 TiledParticles, u1 SliceData, u2 SliceList, u3 Result
 	constexpr uint32_t kNumUAVs = 4;
 
@@ -46,8 +46,10 @@ namespace
 		float projScaleX, projScaleY;
 		float heatMax;
 		float nearClip;
+		DirectX::XMFLOAT2 depthParams;	// 투영 행렬 (_33, _43) : 씬 깊이 -> 카메라 거리 (SceneViewDepth)
+		DirectX::XMFLOAT2 pad;
 	};
-	static_assert(sizeof(TileConstants) == 96, "HLSL TileConstants(96 B)와 일치해야 함");
+	static_assert(sizeof(TileConstants) == 112, "HLSL TileConstants(112 B)와 일치해야 함");
 
 	struct alignas(16) LayeredConstants
 	{
@@ -175,6 +177,7 @@ void ParticleLayeredRenderer::Render(GraphicsContext& gfx, const Math::Camera& c
 		tc.projScaleY = proj._22;
 		tc.heatMax = 1024.f;
 		tc.nearClip = cam.GetNearClip();
+		tc.depthParams = { proj._33, proj._43 };
 		cc.SetDynamicConstantBufferView(kTileCBV, sizeof(tc), &tc);
 	}
 
@@ -192,13 +195,13 @@ void ParticleLayeredRenderer::Render(GraphicsContext& gfx, const Math::Camera& c
 	{
 		ScopedTimer _t(L"Particle Layered Bin", cc);
 
-		// 이 구간의 셰이더는 t0 ~ t2만 읽는다. t3 ~ t5는 자리만 채움
+		// 이 구간의 셰이더는 t0 ~ t2만 읽는다. t3 ~ t6은 자리만 채움
 		const D3D12_CPU_DESCRIPTOR_HANDLE srvs[kNumSRVs] =
 		{
 			compact.srvs[0],					// t0 particles
 			compact.srvs[1],					// t1 (slot, depth) 정렬 안 됨
 			compact.indirectBuffer->GetSRV(),	// t2 개수
-			compact.srvs[0], compact.srvs[0], compact.srvs[0],
+			compact.srvs[0], compact.srvs[0], compact.srvs[0], compact.srvs[0],
 		};
 		const D3D12_CPU_DESCRIPTOR_HANDLE uavs[kNumUAVs] =
 		{
@@ -236,7 +239,8 @@ void ParticleLayeredRenderer::Render(GraphicsContext& gfx, const Math::Camera& c
 
 	cc.TransitionResource(m_TiledParticles, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	cc.TransitionResource(m_SliceList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	cc.TransitionResource(m_SliceData, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, true);
+	cc.TransitionResource(m_SliceData, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	cc.TransitionResource(target.depth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, true);	// Render CS가 깊이 테스트로 읽는다
 
 	// ---------------- 타일 렌더 : slice 단위 WBOIT + under + 조기 종료 ----------------
 	{
@@ -249,6 +253,7 @@ void ParticleLayeredRenderer::Render(GraphicsContext& gfx, const Math::Camera& c
 			m_TiledParticles.GetSRV(),			// t3
 			m_SliceList.GetSRV(),				// t4
 			m_SliceData.GetSRV(),				// t5
+			target.depth.GetDepthSRV(),			// t6 씬 깊이
 		};
 		// 이 pass는 u3(Result)만 쓴다. 나머지는 SRV 상태인 버퍼 대신 Result로 자리만 채움
 		const D3D12_CPU_DESCRIPTOR_HANDLE uavs[kNumUAVs] =
@@ -273,5 +278,6 @@ void ParticleLayeredRenderer::Render(GraphicsContext& gfx, const Math::Camera& c
 		gfx.Draw(3);
 	}
 
+	gfx.TransitionResource(target.depth, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
 	gfx.SetRenderTarget(target.color.GetRTV(), target.depth.GetDSV());
 }

@@ -3,6 +3,7 @@
 StructuredBuffer<TiledParticle> TiledParticles : register(t3);
 StructuredBuffer<uint> SliceList : register(t4);
 ByteAddressBuffer SliceData : register(t5);
+Texture2D<float> SceneDepth : register(t6);   // 씬 깊이 버퍼 (reverse-Z) : 직접 깊이 테스트
 
 RWTexture2D<float4> Result : register(u3);
 
@@ -20,6 +21,7 @@ RWTexture2D<float4> Result : register(u3);
 groupshared uint gs_HitMask[MASK_WORDS];
 groupshared TiledParticle gs_Batch[GROUP_THREADS]; // 32 B x 256 = 8 KB
 groupshared uint gs_AnyAlive;
+groupshared uint gs_TileMaxDepth;   // 타일에서 가장 먼 씬 거리 (asuint, 양수 float라 uint 비교 = float 비교)
 
 float3 HeatColor(float t)   // 0 = 파랑 -> 초록 -> 노랑 -> 1 = 빨강
 {
@@ -53,6 +55,17 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint GI : SV
     const float2 tileMin = (float2) (Gid.xy * TILE_SIZE);
     const float2 tileMax = tileMin + TILE_SIZE;
 
+    // 깊이 테스트 : 이 픽셀의 씬까지 거리. 파티클이 이보다 멀면 가려진 것
+    const float sceneDepth = inScreen ? SceneViewDepth(SceneDepth[DTid.xy]) : 0.f;
+
+    // 타일 단위 컬링 : 타일에서 가장 먼 씬보다 뒤의 파티클 / slice는 타일 전체에서 가려진다
+    if (GI == 0)
+        gs_TileMaxDepth = 0;
+    GroupMemoryBarrierWithGroupSync();
+    InterlockedMax(gs_TileMaxDepth, asuint(sceneDepth));
+    GroupMemoryBarrierWithGroupSync();
+    const float tileMaxDepth = asfloat(gs_TileMaxDepth);
+
     float zMin = asfloat(SliceData.Load(SLICE_DATA_DEPTH_MIN));
     float zMax = asfloat(SliceData.Load(SLICE_DATA_DEPTH_MAX));
     SanitizeDepthRange(zMin, zMax);
@@ -77,13 +90,18 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint GI : SV
             continue;
 
         ++nonEmptySlices;
+
+        const float sliceNear = SliceBoundary(s, zMin, zMax);
+        const float sliceFar = SliceBoundary(s + 1, zMin, zMax);
+
+        // slice는 앞에서 뒤 순서 -> 이 slice가 타일의 가장 먼 씬보다 뒤라면 남은 slice도 모두 가려짐 (그룹 전체 같은 값)
+        if (sliceNear > tileMaxDepth)
+            tileDone = true;
+
         if (tileDone)
             continue; // 남은 slice는 개수만 세고(디버그) 처리하지 않음
 
         ++processedSlices;
-
-        const float sliceNear = SliceBoundary(s, zMin, zMax);
-        const float sliceFar = SliceBoundary(s + 1, zMin, zMax);
 
         float3 accum = 0.f;
         float wsum = 0.f;
@@ -100,7 +118,7 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint GI : SV
             {
                 const TiledParticle tp = TiledParticles[SliceList[j]];
                 gs_Batch[GI] = tp;
-                if (OverlapsTile(tp, tileMin, tileMax))
+                if (tp.viewDepth <= tileMaxDepth && OverlapsTile(tp, tileMin, tileMax))
                     InterlockedOr(gs_HitMask[GI >> 5], 1u << (GI & 31));
             }
             GroupMemoryBarrierWithGroupSync();
@@ -118,6 +136,9 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint GI : SV
                         bits &= bits - 1;
 
                         const TiledParticle tp = gs_Batch[w * 32 + k];
+                        if (tp.viewDepth > sceneDepth)
+                            continue;   // 픽셀 단위 깊이 테스트 (하드웨어 depth test 대신)
+
                         const float4 c = ShadeAtPixel(tp, pixelCenter); // (rgb * a, a)
                         if (c.a <= 0.f)
                             continue;

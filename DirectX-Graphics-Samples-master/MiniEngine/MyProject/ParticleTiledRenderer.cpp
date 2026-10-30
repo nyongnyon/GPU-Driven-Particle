@@ -22,7 +22,7 @@ using namespace Graphics;
 namespace
 {
 	enum TileRootParams : uint32_t { kTileCBV = 0, kTileSRVs, kTileUAVs, kNumTileRootParams };
-	// t0 particles, t1 정렬 목록, t2 개수(DrawArgs), t3/t4 예비, t5 TiledParticles
+	// t0 particles, t1 정렬 목록, t2 개수(DrawArgs), t3 씬 깊이(Render CS), t4 예비, t5 TiledParticles
 	constexpr uint32_t kNumTileSRVs = 6;
 
 	// u0 Result, u1 TiledParticles (Prep CS)
@@ -38,8 +38,10 @@ namespace
 		float projScaleX, projScaleY;
 		float heatMax; // 히트맵 최대값 (디버그용)
 		float nearClip;		
+		DirectX::XMFLOAT2 depthParams;	// 투영 행렬 (_33, _43) : 씬 깊이 -> 카메라 거리 (SceneViewDepth)
+		DirectX::XMFLOAT2 pad;
 	};
-	static_assert(sizeof(TileConstants) == 96, "HLSL TileConstants(96 B)와 일치해야 함");
+	static_assert(sizeof(TileConstants) == 112, "HLSL TileConstants(112 B)와 일치해야 함");
 
 
 	constexpr DXGI_FORMAT kResultFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
@@ -145,6 +147,7 @@ void ParticleTiledRenderer::Render(GraphicsContext& gfx, const Math::Camera& cam
 		tc.projScaleY = proj._22;
 		tc.heatMax = 1024.f;
 		tc.nearClip = cam.GetNearClip();
+		tc.depthParams = { proj._33, proj._43 };
 
 		cc.SetDynamicConstantBufferView(kTileCBV, sizeof(tc), &tc);
 	}
@@ -170,7 +173,8 @@ void ParticleTiledRenderer::Render(GraphicsContext& gfx, const Math::Camera& cam
 		cc.Dispatch1D(sorted.maxParticle, 64);
 	}
 	
-	cc.TransitionResource(m_TiledParticles, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, true);
+	cc.TransitionResource(m_TiledParticles, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	cc.TransitionResource(target.depth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, true);	// Render CS가 깊이 테스트로 읽는다
 
 
 	{
@@ -182,7 +186,7 @@ void ParticleTiledRenderer::Render(GraphicsContext& gfx, const Math::Camera& cam
 			sorted.srvs[0],					
 			sorted.srvs[1],					
 			sorted.indirectBuffer->GetSRV(),
-			sorted.srvs[0],					
+			target.depth.GetDepthSRV(),			// t3 씬 깊이
 			sorted.srvs[0],					
 			m_TiledParticles.GetSRV(),			// t5 TiledParticles
 		};
@@ -206,5 +210,6 @@ void ParticleTiledRenderer::Render(GraphicsContext& gfx, const Math::Camera& cam
 	}
 
 
+	gfx.TransitionResource(target.depth, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
 	gfx.SetRenderTarget(target.color.GetRTV(), target.depth.GetDSV());
 }
