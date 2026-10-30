@@ -27,6 +27,7 @@ struct EmitRequest
 {
 	Math::Vector3 emitPosition;
 	uint32_t	  emitCount;
+	uint32_t	  emitterId = 0;	// Particle.emitterId
 	EmitterParams emitParams;
 };
 
@@ -41,6 +42,7 @@ public:
 
 	Math::Vector3	position;		// TEMP
 	EmitterParams	emitParams;
+	uint32_t		id = 0;			// ParticleWorld slot index, written to Particle.emitterId
 
 
 private:

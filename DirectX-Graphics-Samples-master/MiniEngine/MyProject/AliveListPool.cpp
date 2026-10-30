@@ -167,25 +167,13 @@ void AliveListPool::Shutdown()
 	m_ParticleBuffer.Destroy();
 }
 
-void AliveListPool::Update(float deltaT, const EmitRequest& emitRequest)
+void AliveListPool::Update(float deltaT, const EmitRequest* requests, uint32_t numRequests)
 {
 #ifndef RELEASE
 	CollectCounterReadback();
 #endif
 
-	Simconstants sc = {};
-	XMStoreFloat3(&sc.emitterPos, emitRequest.emitPosition);
-	sc.deltaTime = deltaT;
-	sc.gravity = { 0.f, -2.f, 0.f };			// TEMP
-	sc.emitCount = emitRequest.emitCount;
-	sc.minLife = emitRequest.emitParams.minLife;
-	sc.maxLife = emitRequest.emitParams.maxLife;
-	sc.minSpeed = 1.f;
-	sc.maxSpeed = 4.f;
-	sc.particleSize = emitRequest.emitParams.minSize;	// TEMP
-	sc.maxParticles = m_MaxParticles;
-	sc.randomSeed = HashU32(m_FrameIndex + 1);
-	FillColorConstants(sc, emitRequest.emitParams);	// colorMode, colorA, colorB
+	const Simconstants frame = BuildFrameConstants(deltaT, m_MaxParticles);
 
 	// -------------------------
 	//		BEGIN COMPUTE
@@ -205,7 +193,6 @@ void AliveListPool::Update(float deltaT, const EmitRequest& emitRequest)
 
 	// 2) Bind
 	ctx.SetRootSignature(s_ComputeSig);
-	ctx.SetDynamicConstantBufferView(kComputeCBVs, sizeof(sc), &sc);
 
 	const D3D12_CPU_DESCRIPTOR_HANDLE uavs[6] =
 	{
@@ -219,18 +206,25 @@ void AliveListPool::Update(float deltaT, const EmitRequest& emitRequest)
 
 	ctx.SetDynamicDescriptors(kComputeUAVs, 0, 6, uavs);
 
-	// 3) Emit
+	// 3) Emit : 이미터마다 dispatch 하나, DeadList / AliveIn은 모두가 같이 쓴다
 	{
 		ScopedTimer _t(L"Particle Emit", ctx);
-		if (emitRequest.emitCount > 0)
+		ctx.SetPipelineState(s_EmitPSO);
+		for (uint32_t r = 0; r < numRequests; ++r)
 		{
-			ctx.SetPipelineState(s_EmitPSO);
-			ctx.Dispatch1D(emitRequest.emitCount, sThreadGroupSize);
+			if (requests[r].emitCount == 0)
+				continue;
+
+			Simconstants sc = frame;
+			FillEmitConstants(sc, requests[r], m_FrameIndex);
+			ctx.SetDynamicConstantBufferView(kComputeCBVs, sizeof(sc), &sc);
+			ctx.Dispatch1D(requests[r].emitCount, sThreadGroupSize);
 		}
 	}
 	InsertUAVBarriers(ctx);
 
-	// 4) Simulate
+	// 4) Simulate : 풀 전체에 한 번 (이미터 값이 아닌 frame 값)
+	ctx.SetDynamicConstantBufferView(kComputeCBVs, sizeof(frame), &frame);
 	if (IsIndirect())
 	{
 		{

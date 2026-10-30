@@ -137,25 +137,13 @@ void CompactionPool::Shutdown()
 	m_ParticleBuffer[1].Destroy();
 }
 
-void CompactionPool::Update(float deltaT, const EmitRequest& emitRequest)
+void CompactionPool::Update(float deltaT, const EmitRequest* requests, uint32_t numRequests)
 {
 #ifndef RELEASE
 	CollectCounterReadback();
 #endif
 
-	Simconstants sc = {};
-	XMStoreFloat3(&sc.emitterPos, emitRequest.emitPosition);
-	sc.deltaTime = deltaT;
-	sc.gravity = { 0.f, -2.f, 0.f };			// TEMP
-	sc.emitCount = emitRequest.emitCount;
-	sc.minLife = emitRequest.emitParams.minLife;
-	sc.maxLife = emitRequest.emitParams.maxLife;
-	sc.minSpeed = 1.f;
-	sc.maxSpeed = 4.f;
-	sc.particleSize = emitRequest.emitParams.minSize;	// TEMP
-	sc.maxParticles = m_MaxParticles;
-	sc.randomSeed = HashU32(m_FrameIndex + 1);
-	FillColorConstants(sc, emitRequest.emitParams);	// colorMode, colorA, colorB
+	const Simconstants frame = BuildFrameConstants(deltaT, m_MaxParticles);
 
 	// -------------------------
 	//		BEGIN COMPUTE
@@ -173,7 +161,6 @@ void CompactionPool::Update(float deltaT, const EmitRequest& emitRequest)
 
 	// 2) Bind
 	ctx.SetRootSignature(s_ComputeSig);
-	ctx.SetDynamicConstantBufferView(kComputeCBVs, sizeof(sc), &sc);
 
 	const D3D12_CPU_DESCRIPTOR_HANDLE uavs[4] =
 	{
@@ -184,16 +171,23 @@ void CompactionPool::Update(float deltaT, const EmitRequest& emitRequest)
 	};
 	ctx.SetDynamicDescriptors(kComputeUAVs, 0, 4, uavs);
 
-	// 3) Emit : 입력 버퍼 끝에 붙이기
+	// 3) Emit : 입력 버퍼 끝에 붙이기 (이미터마다 dispatch 하나)
 	{
 		ScopedTimer _t(L"Particle Emit", ctx);
-		if (emitRequest.emitCount > 0)
+		ctx.SetPipelineState(s_EmitPSO);
+		for (uint32_t r = 0; r < numRequests; ++r)
 		{
-			ctx.SetPipelineState(s_EmitPSO);
-			ctx.Dispatch1D(emitRequest.emitCount, sThreadGroupSize);
+			if (requests[r].emitCount == 0)
+				continue;
+
+			Simconstants sc = frame;
+			FillEmitConstants(sc, requests[r], m_FrameIndex);
+			ctx.SetDynamicConstantBufferView(kComputeCBVs, sizeof(sc), &sc);
+			ctx.Dispatch1D(requests[r].emitCount, sThreadGroupSize);
 		}
 	}
 	InsertUAVBarriers(ctx);
+	ctx.SetDynamicConstantBufferView(kComputeCBVs, sizeof(frame), &frame);
 
 	// 4-1) ArgsPre : alive 수로 Simulate 그룹 수 계산
 	{

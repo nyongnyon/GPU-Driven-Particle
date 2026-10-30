@@ -148,25 +148,14 @@ void SlotReusePool::Shutdown()
 	m_ParticleBuffer.Destroy();
 }
 
-void SlotReusePool::Update(float deltaT, const EmitRequest& emitRequest)
+void SlotReusePool::Update(float deltaT, const EmitRequest* requests, uint32_t numRequests)
 {
 #ifndef RELEASE
 	CollectCounterReadback();
 #endif
 
-	Simconstants sc = {};
-	XMStoreFloat3(&sc.emitterPos, emitRequest.emitPosition);
-	sc.deltaTime = deltaT;
-	sc.gravity = { 0.f, -2.f, 0.f };			// TEMP
-	sc.emitCount = emitRequest.emitCount;
-	sc.minLife = emitRequest.emitParams.minLife;
-	sc.maxLife = emitRequest.emitParams.maxLife;
-	sc.minSpeed = 1.f;
-	sc.maxSpeed = 4.f;
-	sc.particleSize = emitRequest.emitParams.minSize;	// TEMP
-	sc.maxParticles = m_MaxParticles;
-	sc.randomSeed = HashU32(m_FrameIndex + 1);
-	
+	const Simconstants frame = BuildFrameConstants(deltaT, m_MaxParticles);
+
 	// -------------------------
 	//		BEGIN COMPUTE
 	// -------------------------
@@ -183,19 +172,24 @@ void SlotReusePool::Update(float deltaT, const EmitRequest& emitRequest)
 
 	// 2) Bind
 	ctx.SetRootSignature(s_ComputeSig);
-	ctx.SetDynamicConstantBufferView(kComputeCBVs, sizeof(sc), &sc);
 
 	const D3D12_CPU_DESCRIPTOR_HANDLE uavs[4]
 		= { m_ParticleBuffer.GetUAV(), m_DeadListBuffer.GetUAV(), m_CounterBuffer.GetUAV(), m_AliveFlagBuffer.GetUAV() };
 	ctx.SetDynamicDescriptors(kComputeUAVs, 0, 4, uavs);
 
-	// 3) Emit
+	// 3) Emit : 이미터마다 dispatch 하나, DeadList는 모두가 같이 쓴다
 	{
 		ScopedTimer _t(L"Particle Emit", ctx); // RAII
-		if (emitRequest.emitCount > 0)
+		ctx.SetPipelineState(s_EmitPSO);
+		for (uint32_t r = 0; r < numRequests; ++r)
 		{
-			ctx.SetPipelineState(s_EmitPSO);
-			ctx.Dispatch1D(emitRequest.emitCount, sThreadGroupSize);
+			if (requests[r].emitCount == 0)
+				continue;
+
+			Simconstants sc = frame;
+			FillEmitConstants(sc, requests[r], m_FrameIndex);
+			ctx.SetDynamicConstantBufferView(kComputeCBVs, sizeof(sc), &sc);
+			ctx.Dispatch1D(requests[r].emitCount, sThreadGroupSize);
 		}
 	}
 
@@ -205,6 +199,7 @@ void SlotReusePool::Update(float deltaT, const EmitRequest& emitRequest)
 	ctx.InsertUAVBarrier(m_CounterBuffer, true);
 
 	// 4) Simulate
+	ctx.SetDynamicConstantBufferView(kComputeCBVs, sizeof(frame), &frame);
 	{
 		const bool useFlagArray = (m_Mode == Mode::SlotReuseFlags);
 		ScopedTimer _t(L"Particle Simulate", ctx);

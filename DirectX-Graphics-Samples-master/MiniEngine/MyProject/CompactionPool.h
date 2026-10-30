@@ -16,7 +16,7 @@ public:
 	void CreateBuffers(uint32_t maxParticles) override;
 	void Shutdown() override;
 
-	void Update(float deltaT, const EmitRequest& emitRequest) override;
+	void Update(float deltaT, const EmitRequest* requests, uint32_t numRequests) override;
 	//void Render(GraphicsContext& gfx, const Math::Camera& cam) override;
 	Particles::DrawInput PrepareDraw(GraphicsContext& gfx) override;
 

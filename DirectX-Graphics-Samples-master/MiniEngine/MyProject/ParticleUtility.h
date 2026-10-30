@@ -19,5 +19,12 @@ namespace Particles
 
 	uint32_t HashU32(uint32_t x);
 
+	// Emit / Simulate dispatch에 공통으로 들어가는 값 (emitCount = 0 : 이미터 값 없음)
+	Simconstants BuildFrameConstants(float deltaT, uint32_t maxParticles);
+
+	// 이미터 하나의 Emit dispatch용 값을 frame 값 위에 채운다
+	// seed는 이미터마다 다르게 (id 0 = 이미터 하나일 때와 같은 seed)
+	void FillEmitConstants(Simconstants& sc, const EmitRequest& request, uint32_t frameIndex);
+
 	float ComputeEmitRateByAliveRatio(float aliveRatio, float minLife, float maxLife, uint32_t maxParticles);
 }

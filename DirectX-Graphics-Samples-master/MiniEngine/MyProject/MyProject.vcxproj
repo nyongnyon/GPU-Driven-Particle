@@ -67,7 +67,7 @@
     <ClInclude Include="ParticleRenderer.h" />
     <ClInclude Include="ParticleRenderTypes.h" />
     <ClInclude Include="ParticleSettings.h" />
-    <ClInclude Include="ParticleSystem.h" />
+    <ClInclude Include="ParticleWorld.h" />
     <ClInclude Include="ParticleTiledRenderer.h" />
     <ClInclude Include="RenderTechnique.h" />
     <ClInclude Include="ParticleTypes.h" />
@@ -91,7 +91,7 @@
     <ClCompile Include="ParticleDepthSorter.cpp" />
     <ClCompile Include="ParticleRenderer.cpp" />
     <ClCompile Include="ParticleSettings.cpp" />
-    <ClCompile Include="ParticleSystem.cpp" />
+    <ClCompile Include="ParticleWorld.cpp" />
     <ClCompile Include="ParticleTiledRenderer.cpp" />
     <ClCompile Include="RenderTechnique.cpp" />
     <ClCompile Include="ParticleUtility.cpp" />

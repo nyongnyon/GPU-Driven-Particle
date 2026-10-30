@@ -8,7 +8,7 @@ struct Particle
     uint color;
     float size;
     uint flags;
-    uint pad;
+    uint emitterId;     // which emitter spawned it (shared pool)
 };
 
 #define COUNTER_ALIVE 0
