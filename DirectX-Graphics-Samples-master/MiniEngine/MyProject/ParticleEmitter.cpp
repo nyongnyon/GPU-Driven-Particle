@@ -14,6 +14,7 @@ EmitRequest ParticleEmitter::RequestEmit(float deltaT)
 	EmitRequest ret = {};
 	ret.emitPosition = position;
 	ret.emitCount = ComputeEmitCount(deltaT) + ComputeBurstCount(deltaT);
+	ret.emitterId = id;
 	ret.emitParams = emitParams;
 
 	return ret;

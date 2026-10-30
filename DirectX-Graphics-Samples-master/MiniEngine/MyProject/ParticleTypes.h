@@ -12,7 +12,7 @@ namespace Particles
 		DirectX::XMFLOAT3 position;	float life;
 		DirectX::XMFLOAT3 velocity; float maxlife;
 		uint32_t		  color;	float size;
-		uint32_t		  flags;	uint32_t pad;
+		uint32_t		  flags;	uint32_t emitterId;	// 어느 이미터가 만들었는가 (공유 풀에서 이미터 구분용)
 	};	
 	static_assert(sizeof(Particle) == 48, "HLSL Particle stride(48 B)와 일치해야 함");
 
@@ -59,8 +59,9 @@ namespace Particles
 		float particleSize; uint32_t maxParticles; uint32_t randomSeed;  uint32_t colorMode;
 		DirectX::XMFLOAT4 colorA;		// rgb : HDR 색(밝기 곱한 값), w : 밝기
 		DirectX::XMFLOAT4 colorB;		// rgb : HDR 색 (Range 전용)
+		uint32_t emitterId;	uint32_t pad[3];	// Emit 때 Particle.emitterId에 기록
 	};
-	static_assert(sizeof(Simconstants) == 96, "HLSL cbuffer SimConstants(96 B)와 일치해야 함");
+	static_assert(sizeof(Simconstants) == 112, "HLSL cbuffer SimConstants(112 B)와 일치해야 함");
 
 	// 파티클 렌더링에 필요한 Constant Buffer
 	struct alignas(16) DrawConstants

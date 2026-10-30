@@ -45,7 +45,7 @@
     <ClCompile Include="TexturedQuad.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ParticleSystem.cpp">
+    <ClCompile Include="ParticleWorld.cpp">
       <Filter>Particle\ParticleSystem</Filter>
     </ClCompile>
     <ClCompile Include="ParticlePool.cpp">
@@ -105,7 +105,7 @@
     <ClInclude Include="TexturedQuad.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="ParticleSystem.h">
+    <ClInclude Include="ParticleWorld.h">
       <Filter>Particle\ParticleSystem</Filter>
     </ClInclude>
     <ClInclude Include="ParticlePool.h">

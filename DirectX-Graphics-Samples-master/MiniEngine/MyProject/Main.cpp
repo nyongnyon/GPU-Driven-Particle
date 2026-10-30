@@ -18,7 +18,7 @@
 #include "TexturedQuad.h"
 #include "ImGuiLayer.h"
 
-#include "ParticleSystem.h"
+#include "ParticleWorld.h"
 #include "ParticleUtility.h"
 
 #include "ProfileRecorder.h"
@@ -54,6 +54,9 @@ private:
     void UpdateImGui(float deltaT);
     void SetCameraPreset(float distance);
 
+    // 이미터 수 / 간격 / 색 구분을 ParticleWorld에 맞춘다 (X축 위에 일렬, 가운데 = 원점)
+    void SyncEmitters(void);
+
     // Main window position is kept between runs (size stays default = same back buffer resolution)
     void RestoreWindowPos(void);
     void TrackWindowPos(void);
@@ -67,8 +70,13 @@ private:
     Camera m_Camera;
     std::unique_ptr<CameraController> m_CameraController;
 
-    ParticleSystem          m_Particles;
+    ParticleWorld           m_Particles;
     ParticleSettings        m_Draft;
+
+    std::vector<EmitterHandle> m_Emitters;
+    int                     m_EmitterCount = 1;
+    float                   m_EmitterSpacing = 3.f;
+    bool                    m_ColorByEmitter = false;     // 이미터마다 다른 색 : 이미터 사이 소팅 확인용
     bool                    m_FixedDt = true;
     bool                    m_Paused = false;     // time stop: simulate with dt = 0
     bool                    m_ShowWBOITTargets = false;
@@ -115,7 +123,8 @@ void MyProject::Startup(void)
     m_Draft.steadyRatio = 0.5f;
     m_Draft.technique = Particles::ParticleTechnique::TiledAlpha;
     //m_Draft.technique = Particles::ParticleTechnique::WeightedOIT;
-    m_Particles.Initialize(m_Draft, Vector3(0.f, 0.f, 0.f));
+    m_Particles.Initialize(m_Draft);
+    SyncEmitters();
 
     // (선택) 스프라이트 텍스처. 경로는 TexturedQuad::Load에 넘기는 것과 같은 기준
     m_Particles.GetMaterial().LoadAlbedo(L"Assets/Textures/image1.png");
@@ -171,9 +180,10 @@ void MyProject::Update(float deltaT)
     if (m_Recorder.Tick(stat.counters.aliveCount))
     {
         const bool useTex = (m_Particles.GetMaterial().constants.features & Particles::kFeatureTexture) != 0;
-        m_LastSaveOk = m_Recorder.AppendCSV("ParticleProfile_v5.csv",   // v5 : 타이머/조건 열 추가 (v4와 열 구성이 다름)
-            Particles::SettingsCsvHeader() + ",texture",
-            Particles::SettingsCsvValues(m_Particles.GetSettings()) + (useTex ? ",1" : ",0"),
+        m_LastSaveOk = m_Recorder.AppendCSV("ParticleProfile_v6.csv",   // v6 : emitters 열 추가 (v5와 열 구성이 다름)
+            Particles::SettingsCsvHeader() + ",texture,emitters",
+            Particles::SettingsCsvValues(m_Particles.GetSettings()) + (useTex ? ",1" : ",0")
+                + "," + std::to_string(m_Particles.GetActiveEmitterCount()),
             m_RecordTag, stat.maxParticles);
     }
 
@@ -239,6 +249,19 @@ void MyProject::UpdateImGui(float deltaT)
         offset = (offset + 1) % IM_ARRAYSIZE(history);
         ImGui::PlotLines("##alive", history, IM_ARRAYSIZE(history), offset,
             "alive", 0.f, float(stat.maxParticles), ImVec2(0.f, 60.f));
+    }
+
+    {
+        // 이미터는 Apply 없이 즉시 반영. 모두 풀 하나를 같이 쓰고, steady / burst 비율을 이미터 수로 나눠 가진다
+        ImGui::SeparatorText("Emitters (shared pool)");
+        ImGui::BeginDisabled(m_Recorder.IsBusy());
+        bool changed = ImGui::SliderInt("Count", &m_EmitterCount, 1, 16);
+        changed |= ImGui::SliderFloat("Spacing", &m_EmitterSpacing, 0.f, 10.f, "%.1f");
+        changed |= ImGui::Checkbox("Color by emitter", &m_ColorByEmitter);
+        ImGui::EndDisabled();
+        if (changed)
+            SyncEmitters();
+        ImGui::Text("Active : %u", m_Particles.GetActiveEmitterCount());
     }
 
     {
@@ -498,6 +521,46 @@ void MyProject::ProcessCaptures(void)
     else
         snprintf(msg, sizeof(msg), "saved %d, FAILED %d (see Captures/)", saved, failed);
     m_LastCaptureMsg = msg;
+}
+
+void MyProject::SyncEmitters(void)
+{
+    const uint32_t count = (uint32_t)(m_EmitterCount < 1 ? 1 : m_EmitterCount);
+
+    while (m_Emitters.size() > count)
+    {
+        m_Particles.DestroyEmitter(m_Emitters.back());
+        m_Emitters.pop_back();
+    }
+    while (m_Emitters.size() < count)
+    {
+        const EmitterHandle handle = m_Particles.CreateEmitter(Vector3(0.f, 0.f, 0.f));
+        if (!handle.IsValid())
+            break;
+        m_Emitters.push_back(handle);
+    }
+
+    const uint32_t n = (uint32_t)m_Emitters.size();
+    for (uint32_t i = 0; i < n; ++i)
+    {
+        ParticleEmitter* emitter = m_Particles.GetEmitter(m_Emitters[i]);
+        if (emitter == nullptr)
+            continue;
+
+        emitter->position = Vector3((float(i) - 0.5f * float(n - 1)) * m_EmitterSpacing, 0.f, 0.f);
+
+        // hue를 이미터 수로 나눠 서로 다른 색 (HueToRGB와 같은 식)
+        const float h = float(i) / float(n);
+        auto channel = [h](float offset)
+        {
+            float x = h + offset;
+            x = (x - floorf(x)) * 6.f - 3.f;
+            const float v = fabsf(x) - 1.f;
+            return v < 0.f ? 0.f : (v > 1.f ? 1.f : v);
+        };
+        m_Particles.SetEmitterColor(m_Emitters[i], m_ColorByEmitter,
+            DirectX::XMFLOAT3(channel(0.f), channel(2.f / 3.f), channel(1.f / 3.f)));
+    }
 }
 
 void MyProject::SetCameraPreset(float distance)

@@ -30,7 +30,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
     p.color = PackR11G11B10(RandomColor(rng));;
     p.size = ParticleSize;
     p.flags = PARTICLE_FLAG_ALIVE;
-    p.pad = 0;
+    p.emitterId = EmitterId;
     Particles[slot] = p;
 
     uint prevEmit;

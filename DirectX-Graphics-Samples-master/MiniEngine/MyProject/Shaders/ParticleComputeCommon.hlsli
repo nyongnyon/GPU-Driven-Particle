@@ -21,6 +21,8 @@ cbuffer SimConstants : register(b0)
     uint ColorMode;
     float4 ColorA;
     float4 ColorB;    
+    uint EmitterId;     // written to Particle.emitterId on emit
+    uint3 SimPad;
 }
 
 #define COLOR_MODE_FIXED    0

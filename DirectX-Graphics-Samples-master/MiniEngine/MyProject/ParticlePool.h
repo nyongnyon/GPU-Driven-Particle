@@ -20,7 +20,8 @@ public:
 	virtual void CreateBuffers(uint32_t maxParticles = 0) = 0;
 	virtual void Shutdown() = 0;
 
-	virtual void Update(float deltaT, const EmitRequest& emitRequest) = 0;
+	// 공유 풀 : 이미터마다 Emit dispatch 하나, Simulate는 풀 전체에 한 번
+	virtual void Update(float deltaT, const EmitRequest* requests, uint32_t numRequests) = 0;
 	//virtual void Render(GraphicsContext& gfx, const Math::Camera& cam) = 0;
 	virtual Particles::DrawInput PrepareDraw(GraphicsContext& gfx) = 0;
 
