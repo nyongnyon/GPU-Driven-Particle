@@ -98,31 +98,81 @@ void ParticleRenderer::Render(GraphicsContext& gfx, const Math::Camera& cam,
 	if (input.numSrvs == 0 || input.maxParticle == 0)
 		return;
 
-	if (m_Technique == ParticleTechnique::TiledAlpha)
-	{
-		const Particles::DrawInput sorted = m_DepthSorter.Sort(gfx, cam, input);
-		m_TiledRenderer.Render(gfx, cam, sorted, material, target);
+	const Particles::DrawInput prepared = Prepare(gfx, cam, input, m_Technique, nullptr);
+	Draw(gfx, cam, prepared, m_Technique, material, target);
+}
+
+void ParticleRenderer::RenderGroups(GraphicsContext& gfx, const Math::Camera& cam,
+	const Particles::DrawInput& input, const ParticleMaterial& material,
+	const ParticleRenderTarget& target, uint32_t techniqueMask, StructuredBuffer& groupTable)
+{
+	if (!m_Initialized)
 		return;
+
+	if (input.numSrvs == 0 || input.maxParticle == 0 || techniqueMask == 0)
+		return;
+
+	// 기법이 하나뿐이면 고를 필요가 없다 -> 필터 없이 (강제 모드와 같은 비용)
+	const bool single = (techniqueMask & (techniqueMask - 1)) == 0;
+
+	for (ParticleTechnique t : kGroupDrawOrder)
+	{
+		if ((techniqueMask & TechniqueBit(t)) == 0)
+			continue;
+
+		GroupFilter filter;
+		filter.groupTable = &groupTable;
+		filter.group = static_cast<uint32_t>(t);
+
+		// 그룹마다 KeyGen 한 번 (같은 SortList를 다음 그룹이 다시 쓴다 : 앞 그룹의 draw가 끝난 뒤)
+		const Particles::DrawInput prepared = Prepare(gfx, cam, input, t, single ? nullptr : &filter);
+		Draw(gfx, cam, prepared, t, material, target);
 	}
+}
+
+Particles::DrawInput ParticleRenderer::Prepare(GraphicsContext& gfx, const Math::Camera& cam,
+	const Particles::DrawInput& input, Particles::ParticleTechnique technique, const Particles::GroupFilter* filter)
+{
+	// Tiled Alpha : 정렬된 입력을 타일로 나눈다
+	if (technique == ParticleTechnique::TiledAlpha)
+		return m_DepthSorter.Sort(gfx, cam, input, filter);
+
 	// Tiled Layered WBOIT : 전역 정렬 없이 KeyGen(compact)만 하고 slice로 나눈다
-	else if (m_Technique == ParticleTechnique::TiledLayeredWBOIT)
-	{
-		const Particles::DrawInput compact = m_DepthSorter.Compact(gfx, cam, input);
-		m_LayeredRenderer.Render(gfx, cam, compact, material, target);
-		return;
-	}
-	RenderTechnique& tech = GetTechniqueImpl(m_Technique);
+	if (technique == ParticleTechnique::TiledLayeredWBOIT)
+		return m_DepthSorter.Compact(gfx, cam, input, filter);
 
 	// 정렬이 필요한 기법이면 Pool 입력을 GPU 깊이 정렬된 입력으로 교체 (Pool은 변경 없음)
-	const Particles::DrawInput drawInput = tech.RequiresDepthSort()
-		? m_DepthSorter.Sort(gfx, cam, input)
-		: input;
+	if (GetTechniqueImpl(technique).RequiresDepthSort())
+		return m_DepthSorter.Sort(gfx, cam, input, filter);
 
+	// 정렬은 필요 없지만 그룹을 골라야 하면 compact (Sorted VS로 그린다)
+	if (filter != nullptr)
+		return m_DepthSorter.Compact(gfx, cam, input, filter);
+
+	return input;
+}
+
+void ParticleRenderer::Draw(GraphicsContext& gfx, const Math::Camera& cam,
+	const Particles::DrawInput& drawInput, Particles::ParticleTechnique technique,
+	const ParticleMaterial& material, const ParticleRenderTarget& target)
+{
+	if (technique == ParticleTechnique::TiledAlpha)
+	{
+		m_TiledRenderer.Render(gfx, cam, drawInput, material, target);
+		return;
+	}
+	if (technique == ParticleTechnique::TiledLayeredWBOIT)
+	{
+		m_LayeredRenderer.Render(gfx, cam, drawInput, material, target);
+		return;
+	}
+
+	RenderTechnique& tech = GetTechniqueImpl(technique);
 	tech.BeginDraw(gfx, target);
 
 	// PSO
 	gfx.SetRootSignature(m_DrawSignature);
-	gfx.SetPipelineState(GetPSO(MakeKey(drawInput.source, m_Technique)));
+	gfx.SetPipelineState(GetPSO(MakeKey(drawInput.source, technique)));
 	gfx.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	// b0 : Camera
@@ -216,9 +266,9 @@ void ParticleRenderer::PrewarmPSOs()
 	{
 		for (uint32_t t = 0; t < static_cast<uint32_t>(ParticleTechnique::COUNT); ++t)
 		{
-			// Sorted source는 정렬 기법에서만, 정렬 기법은 Sorted source로만 그린다
+			// 정렬 기법은 Sorted source로만 그린다. Sorted source는 모든 기법 (이미터별 그룹은 compact 후 Sorted VS)
 			const bool sortedSource = (static_cast<DrawSource>(s) == DrawSource::Sorted);
-			if (sortedSource != GetTechniqueImpl(static_cast<ParticleTechnique>(t)).RequiresDepthSort())
+			if (!sortedSource && GetTechniqueImpl(static_cast<ParticleTechnique>(t)).RequiresDepthSort())
 				continue;
 
 			GetPSO(MakeKey(static_cast<DrawSource>(s), static_cast<ParticleTechnique>(t)));

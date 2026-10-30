@@ -30,6 +30,7 @@ struct EmitterHandle
 //  - Update : 이미터마다 EmitRequest를 모아 풀에 넘긴다 (Emit = 이미터별 dispatch, Simulate = 풀 전체에 한 번)
 //  - Render : 풀이 하나이므로 소팅, WBOIT clear / composite도 프레임당 한 번
 //  - steady / burst 비율은 풀 전체 기준이고, 활성 이미터 수로 나눠 각 이미터에 준다
+//  - 렌더 기법 : forceTechnique면 전체가 하나, 아니면 이미터마다 (같은 기법끼리 묶어 kGroupDrawOrder 순서로)
 class ParticleWorld
 {
 public:
@@ -44,11 +45,16 @@ public:
 	// -----------------------
 	//		Emitter
 	// -----------------------
-	EmitterHandle		CreateEmitter(const Math::Vector3& position);	// 슬롯이 없으면 invalid 핸들
+	EmitterHandle		CreateEmitter(const Math::Vector3& position,		// 슬롯이 없으면 invalid 핸들
+							Particles::ParticleTechnique technique = Particles::ParticleTechnique::SortedAlpha);
 	void				DestroyEmitter(EmitterHandle handle);				// emit만 멈추고, 남은 파티클은 수명대로 산다
 	ParticleEmitter*	GetEmitter(EmitterHandle handle);					// 무효 / 삭제된 핸들이면 nullptr
 	void				SetEmitterColor(EmitterHandle handle, bool overrideColor, const DirectX::XMFLOAT3& color = { 1.f, 1.f, 1.f });
 	uint32_t			GetActiveEmitterCount() const { return m_ActiveCount; }
+
+	// 이미터별 기법 (IsEmitterTechnique()만, 아니면 무시). forceTechnique가 꺼져 있을 때 쓰인다
+	void							SetEmitterTechnique(EmitterHandle handle, Particles::ParticleTechnique technique);
+	Particles::ParticleTechnique	GetEmitterTechnique(EmitterHandle handle);
 
 	// -----------------------
 	//		Settings
@@ -72,6 +78,8 @@ private:
 
 		bool				overrideColor = false;
 		DirectX::XMFLOAT3	color = { 1.f, 1.f, 1.f };
+
+		Particles::ParticleTechnique technique = Particles::ParticleTechnique::SortedAlpha;	// Dying 동안에도 유지 (남은 파티클을 그 기법으로)
 	};
 
 	void ApplyPending();
@@ -80,6 +88,9 @@ private:
 	void UpdateDyingSlots(float deltaT);
 	void FreeSlot(uint32_t index);
 	EmitterSlot* FindSlot(EmitterHandle handle);
+
+	uint32_t	UsedTechniqueMask() const;		// Active + Dying 이미터가 쓰는 기법들 (TechniqueBit)
+	void		UploadEmitterGroups(GraphicsContext& gfx);
 
 	void CreatePool(Particles::Mode mode, uint32_t maxParticles);
 	void DestroyPool();
@@ -99,6 +110,11 @@ private:
 	std::vector<EmitRequest>		m_Requests;		// 매 프레임 재사용
 	uint32_t						m_ActiveCount = 0;
 	bool							m_EmitterParamsDirty = false;
+
+	// emitterId -> 기법 테이블 (KeyGen 필터가 읽는다). 바뀐 프레임에만 다시 올린다
+	StructuredBuffer				m_EmitterGroupBuffer;
+	alignas(16) uint32_t			m_EmitterGroups[kMaxEmitters] = {};
+	bool							m_EmitterGroupsDirty = false;
 
 	// -----------------------
 	//		Settings

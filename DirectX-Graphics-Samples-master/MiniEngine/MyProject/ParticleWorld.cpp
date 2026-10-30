@@ -35,6 +35,9 @@ void ParticleWorld::Initialize(const ParticleSettings& settings)
 
 	m_Emitters.reserve(kMaxEmitters);
 	m_Requests.reserve(kMaxEmitters);
+
+	m_EmitterGroupBuffer.Create(L"Particle Emitter Groups", kMaxEmitters, sizeof(uint32_t), m_EmitterGroups);
+	m_EmitterGroupsDirty = false;
 }
 
 
@@ -43,6 +46,7 @@ void ParticleWorld::Shutdown()
 	DestroyPool();
 	m_ParticleMaterial.ClearAlbedo();
 	m_ParticleRenderer.Shutdown();
+	m_EmitterGroupBuffer.Destroy();
 
 	m_Emitters.clear();
 	m_FreeSlots.clear();
@@ -87,11 +91,21 @@ void ParticleWorld::Render(GraphicsContext& gfx, const Math::Camera& cam)
 	Particles::DrawInput in = m_ParticlePool->PrepareDraw(gfx);
 
 	const ParticleRenderTarget target{ g_SceneColorBuffer, g_SceneDepthBuffer };
-	
-	m_ParticleRenderer.Render(gfx, cam, in, m_ParticleMaterial, target);
+
+	// 전체 강제 : 예전과 같은 경로 (측정용)
+	if (m_Settings.forceTechnique)
+	{
+		m_ParticleRenderer.Render(gfx, cam, in, m_ParticleMaterial, target);
+		return;
+	}
+
+	// 이미터별 : 같은 기법끼리 한 그룹 (그룹 안에서는 이미터 경계 없이 소팅)
+	UploadEmitterGroups(gfx);
+	m_ParticleRenderer.RenderGroups(gfx, cam, in, m_ParticleMaterial, target,
+		UsedTechniqueMask(), m_EmitterGroupBuffer);
 }
 
-EmitterHandle ParticleWorld::CreateEmitter(const Math::Vector3& position)
+EmitterHandle ParticleWorld::CreateEmitter(const Math::Vector3& position, Particles::ParticleTechnique technique)
 {
 	uint32_t index = EmitterHandle::kInvalid;
 	if (!m_FreeSlots.empty())
@@ -116,6 +130,10 @@ EmitterHandle ParticleWorld::CreateEmitter(const Math::Vector3& position)
 	slot.emitter = ParticleEmitter{};
 	slot.emitter.id = index;
 	slot.emitter.position = position;
+	slot.technique = IsEmitterTechnique(technique) ? technique : ParticleTechnique::SortedAlpha;
+
+	m_EmitterGroups[index] = static_cast<uint32_t>(slot.technique);
+	m_EmitterGroupsDirty = true;
 
 	++m_ActiveCount;
 	m_EmitterParamsDirty = true;	// 비율을 나눌 이미터 수가 바뀜
@@ -152,6 +170,23 @@ void ParticleWorld::SetEmitterColor(EmitterHandle handle, bool overrideColor, co
 	slot->overrideColor = overrideColor;
 	slot->color = color;
 	m_EmitterParamsDirty = true;
+}
+
+void ParticleWorld::SetEmitterTechnique(EmitterHandle handle, Particles::ParticleTechnique technique)
+{
+	EmitterSlot* slot = FindSlot(handle);
+	if (slot == nullptr || !IsEmitterTechnique(technique) || slot->technique == technique)
+		return;
+
+	slot->technique = technique;
+	m_EmitterGroups[handle.index] = static_cast<uint32_t>(technique);
+	m_EmitterGroupsDirty = true;
+}
+
+Particles::ParticleTechnique ParticleWorld::GetEmitterTechnique(EmitterHandle handle)
+{
+	EmitterSlot* slot = FindSlot(handle);
+	return slot ? slot->technique : ParticleTechnique::SortedAlpha;
 }
 
 void ParticleWorld::ApplySettings(const ParticleSettings& settings, bool forceRecreate)
@@ -298,6 +333,28 @@ ParticleWorld::EmitterSlot* ParticleWorld::FindSlot(EmitterHandle handle)
 		return nullptr;
 
 	return &slot;
+}
+
+uint32_t ParticleWorld::UsedTechniqueMask() const
+{
+	uint32_t mask = 0;
+	for (const EmitterSlot& slot : m_Emitters)
+	{
+		if (slot.state != SlotState::Free)
+			mask |= TechniqueBit(slot.technique);
+	}
+	return mask;
+}
+
+void ParticleWorld::UploadEmitterGroups(GraphicsContext& gfx)
+{
+	if (!m_EmitterGroupsDirty)
+		return;
+
+	gfx.TransitionResource(m_EmitterGroupBuffer, D3D12_RESOURCE_STATE_COPY_DEST, true);
+	gfx.WriteBuffer(m_EmitterGroupBuffer, 0, m_EmitterGroups, sizeof(m_EmitterGroups));
+	gfx.TransitionResource(m_EmitterGroupBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, true);
+	m_EmitterGroupsDirty = false;
 }
 
 void ParticleWorld::CreatePool(Particles::Mode mode, uint32_t maxParticles)
