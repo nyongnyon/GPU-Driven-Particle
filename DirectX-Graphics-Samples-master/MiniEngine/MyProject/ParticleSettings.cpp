@@ -34,6 +34,7 @@ bool ParticleSettings::operator==(const ParticleSettings& o) const
 		&& SameColor(colorA, o.colorA)
 		&& SameColor(colorB, o.colorB)
 		&& colorIntensity == o.colorIntensity
+		&& forceTechnique == o.forceTechnique
 		&& technique == o.technique
 		&& layeredSlices == o.layeredSlices
 		&& layeredSliceMode == o.layeredSliceMode;
@@ -120,7 +121,7 @@ namespace Particles
 		char buf[256];
 		snprintf(buf, sizeof(buf), "%s,%.2f,%.2f,%.2f,%.2f,%.2f,%s,%.3f,%s,%.2f",
 			ModeName(s.mode), s.steadyRatio, s.burstRatio, s.burstInterval, s.minLife, s.maxLife,
-			TechniqueName(s.technique), s.particleSize, ColorModeName(s.colorMode), s.colorIntensity,
+			s.forceTechnique ? TechniqueName(s.technique) : "PerEmitter", s.particleSize, ColorModeName(s.colorMode), s.colorIntensity,
 			s.layeredSlices, s.layeredSliceMode == 0 ? "Linear" : "Log");
 		return buf;
 	}

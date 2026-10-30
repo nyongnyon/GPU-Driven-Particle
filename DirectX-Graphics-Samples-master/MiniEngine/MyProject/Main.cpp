@@ -293,6 +293,44 @@ void MyProject::UpdateImGui(float deltaT)
         if (changed)
             SyncEmitters();
         ImGui::Text("Active : %u", m_Particles.GetActiveEmitterCount());
+
+        // 이미터별 기법 (강제 모드가 꺼져 있을 때만 쓰인다)
+        const bool forced = m_Particles.GetSettings().forceTechnique;
+        if (forced)
+            ImGui::TextDisabled("technique forced : %s (turn off Force in Render)",
+                Particles::TechniqueName(m_Particles.GetSettings().technique));
+
+        static const Particles::ParticleTechnique kEmitterTechs[] =
+        {
+            Particles::ParticleTechnique::Additive, Particles::ParticleTechnique::PremultipliedAlpha,
+            Particles::ParticleTechnique::SortedAlpha, Particles::ParticleTechnique::TiledAlpha,
+        };
+        static const char* kEmitterTechLabels[] = { "Additive", "Premultiplied", "Sorted Alpha", "Tiled Alpha" };
+
+        uint32_t occluding = 0;     // 가리는(Alpha 계열) 기법이 몇 종류 쓰이는가
+        bool usedTech[IM_ARRAYSIZE(kEmitterTechs)] = {};
+
+        ImGui::BeginDisabled(forced || m_Recorder.IsBusy());
+        for (uint32_t i = 0; i < (uint32_t)m_Emitters.size(); ++i)
+        {
+            const Particles::ParticleTechnique cur = m_Particles.GetEmitterTechnique(m_Emitters[i]);
+            int index = 0;
+            for (int k = 0; k < IM_ARRAYSIZE(kEmitterTechs); ++k)
+                if (kEmitterTechs[k] == cur)
+                    index = k;
+
+            char label[32];
+            snprintf(label, sizeof(label), "Emitter %u", i);
+            if (ImGui::Combo(label, &index, kEmitterTechLabels, IM_ARRAYSIZE(kEmitterTechLabels)))
+                m_Particles.SetEmitterTechnique(m_Emitters[i], kEmitterTechs[index]);
+            usedTech[index] = true;
+        }
+        ImGui::EndDisabled();
+
+        for (int k = 1; k < IM_ARRAYSIZE(kEmitterTechs); ++k)      // 0 = Additive : 순서와 무관
+            occluding += usedTech[k] ? 1u : 0u;
+        if (!forced && occluding >= 2)
+            ImGui::TextColored(ImVec4(1.f, 0.6f, 0.2f, 1.f), "different alpha techniques : overlaps between them are not sorted");
     }
 
     {
@@ -346,20 +384,26 @@ void MyProject::UpdateImGui(float deltaT)
         ImGui::SliderFloat("Intensity", &m_Draft.colorIntensity, 0.f, Particles::kMaxColorIntensity, "%.2f",
             ImGuiSliderFlags_Logarithmic);
 
-        // Render
+        // Render : 강제 = 모든 이미터를 아래 기법 하나로 (측정용). 끄면 이미터마다 (Emitters 섹션)
         ImGui::SeparatorText("Render");
+        ImGui::Checkbox("Force one technique (for measurement)", &m_Draft.forceTechnique);
+
+        ImGui::BeginDisabled(!m_Draft.forceTechnique);
         int tech = (int)m_Draft.technique;
         ImGui::RadioButton("Additive", &tech, (int)Particles::ParticleTechnique::Additive); ImGui::SameLine();
         ImGui::RadioButton("Premultiplied", &tech, (int)Particles::ParticleTechnique::PremultipliedAlpha); ImGui::SameLine();
-        ImGui::RadioButton("WBOIT", &tech, (int)Particles::ParticleTechnique::WeightedOIT); ImGui::SameLine();
         ImGui::RadioButton("Sorted Alpha", &tech, (int)Particles::ParticleTechnique::SortedAlpha);
-        ImGui::RadioButton("Tiled Alpha", &tech, (int)Particles::ParticleTechnique::TiledAlpha); ImGui::SameLine();
+        ImGui::RadioButton("Tiled Alpha", &tech, (int)Particles::ParticleTechnique::TiledAlpha);
+        // 레거시 : 이미터별 선택에는 없고, 강제 모드에서만 돌려 볼 수 있다
+        ImGui::TextDisabled("legacy (forced only)");
+        ImGui::RadioButton("WBOIT", &tech, (int)Particles::ParticleTechnique::WeightedOIT); ImGui::SameLine();
         ImGui::RadioButton("Tiled Layered WBOIT", &tech, (int)Particles::ParticleTechnique::TiledLayeredWBOIT);
+        ImGui::EndDisabled();
 
         m_Draft.technique = (Particles::ParticleTechnique)tech;
 
         // Layered WBOIT : slice 수가 정확도(정렬에 가까움)와 비용 사이의 다이얼
-        if (m_Draft.technique == Particles::ParticleTechnique::TiledLayeredWBOIT)
+        if (m_Draft.forceTechnique && m_Draft.technique == Particles::ParticleTechnique::TiledLayeredWBOIT)
         {
             int slices = (int)m_Draft.layeredSlices;
             if (ImGui::SliderInt("Slices", &slices, 1, 64))
@@ -387,11 +431,11 @@ void MyProject::UpdateImGui(float deltaT)
         ImGui::EndDisabled();
 
         // 조기 종료 확인용 히트맵 (Apply 없이 즉시 반영) : 파랑 = 앞쪽 slice 몇 장만 보고 끝, 빨강 = 끝까지 다 봄
-        if (m_Particles.GetSettings().technique == Particles::ParticleTechnique::TiledLayeredWBOIT)
+        if (m_Particles.GetSettings().forceTechnique && m_Particles.GetSettings().technique == Particles::ParticleTechnique::TiledLayeredWBOIT)
             ImGui::Checkbox("Slice heatmap (early-out)", &m_Particles.GetRenderer().LayeredOptions().debugView);
 
         // WBOIT render targets in a separate window (the extra pass is skipped while recording)
-        if (m_Particles.GetSettings().technique == Particles::ParticleTechnique::WeightedOIT)
+        if (m_Particles.GetSettings().forceTechnique && m_Particles.GetSettings().technique == Particles::ParticleTechnique::WeightedOIT)
             ImGui::Checkbox("Show WBOIT targets", &m_ShowWBOITTargets);
 
         // 측정 조건이 의도와 달라지는 경우 경고
@@ -457,7 +501,8 @@ void MyProject::UpdateImGui(float deltaT)
 
     {
         WBOITTechnique& wboit = m_Particles.GetRenderer().WBOIT();
-        const bool wboitApplied = (m_Particles.GetSettings().technique == Particles::ParticleTechnique::WeightedOIT);
+        const bool wboitApplied = m_Particles.GetSettings().forceTechnique
+            && (m_Particles.GetSettings().technique == Particles::ParticleTechnique::WeightedOIT);
         const bool showTargets = m_ShowWBOITTargets && wboitApplied;
         wboit.GetDebugOptions().enabled = showTargets && !m_Recorder.IsBusy();
 

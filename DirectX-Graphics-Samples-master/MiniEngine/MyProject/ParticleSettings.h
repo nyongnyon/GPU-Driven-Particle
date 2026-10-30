@@ -26,6 +26,10 @@ struct ParticleSettings
 	DirectX::XMFLOAT3		colorB = { 1.0f, 0.85f, 0.3f };
 	float					colorIntensity = 1.0f;
 
+	// --- Render ---
+	// forceTechnique = true : 모든 이미터를 technique 하나로 (측정용, 레거시 WBOIT 계열은 여기서만)
+	// forceTechnique = false : 이미터마다 자기 기법 (ParticleWorld::SetEmitterTechnique)
+	bool						 forceTechnique = true;
 	Particles::ParticleTechnique technique = Particles::ParticleTechnique::Additive;
 
 	// --- TiledLayeredWBOIT 전용 (다른 기법에선 무시) ---

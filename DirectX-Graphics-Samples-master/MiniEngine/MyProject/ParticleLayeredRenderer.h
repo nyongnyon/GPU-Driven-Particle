@@ -12,6 +12,9 @@ namespace Math { class Camera; }
 
 
 // Clear -> Prep(quad + depth min/max) -> Count -> Scan -> Write -> Render(타일) -> Composite
+// [레거시] ParticleWorld의 이미터별 기법에는 없고, 전체 강제 모드(forceTechnique)에서만 쓰인다.
+//          셰이딩을 ParticleLayeredRenderCS 안에서 따로 하므로 머티리얼 / 텍스처를 바꾸면 여기도 같이 고쳐야 한다
+//          (TiledParticle.pad에 slice 번호를 쓰고 있음 : ParticleLayeredCountCS)
 class ParticleLayeredRenderer
 {
 public:

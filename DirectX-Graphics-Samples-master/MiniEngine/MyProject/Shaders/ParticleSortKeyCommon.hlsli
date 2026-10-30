@@ -18,8 +18,13 @@
 cbuffer SortConstants : register(b0)
 {
     float3 CamPosition; uint MaxParticles;
-    float3 CamForward;  float SortPad;
+    float3 CamForward;  uint FilterGroup;   // SORT_NO_FILTER = every particle
 };
+
+#define SORT_NO_FILTER 0xFFFFFFFFu
+
+// emitterId -> technique group. Only read when FilterGroup != SORT_NO_FILTER
+StructuredBuffer<uint> EmitterGroups : register(t3);
 
 StructuredBuffer<Particle> Particles : register(t0);
 #if SORT_SOURCE == SORT_SOURCE_REUSE_FLAGS
@@ -62,10 +67,11 @@ void main(uint3 DTid : SV_DispatchThreadID)
         if (alive)
         {
             const Particle p = Particles[slot];
+            const bool inGroup = (FilterGroup == SORT_NO_FILTER) || (EmitterGroups[p.emitterId] == FilterGroup);
             depth = dot(p.position - CamPosition, CamForward);
 
             // 쿼드가 일부라도 카메라 앞에 걸치면 그린다 (완전히 뒤쪽이면 정렬/드로우 대상에서 제외)
-            visible = (depth + p.size) > 0.f;
+            visible = inGroup && (depth + p.size) > 0.f;
         }
     }
 

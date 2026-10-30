@@ -49,6 +49,8 @@ private:
 };
 
 // WBOIT 전용, multi pass, multi rtv
+// [레거시] ParticleWorld의 이미터별 기법에는 없고, 전체 강제 모드(forceTechnique)에서만 쓰인다.
+//          셰이딩은 ShadeParticle()을 같이 쓰므로 머티리얼 변경은 대부분 그대로 따라온다
 class WBOITTechnique : public RenderTechnique
 {
 public:
