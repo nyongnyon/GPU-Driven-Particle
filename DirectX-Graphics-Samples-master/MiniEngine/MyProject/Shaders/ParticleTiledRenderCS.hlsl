@@ -9,6 +9,10 @@ ByteAddressBuffer DrawArgs : register(t2); // offset 4 = 정렬된 개수
 StructuredBuffer<TiledParticle> TiledParticles : register(t5); //
 
 RWTexture2D<float4> Result : register(u0);
+#if TILED_DEBUG_HEATMAP
+RWByteAddressBuffer TileHits : register(u2);
+#endif
+
 
 #define TILE_SIZE   16
 #define GROUP_THREADS (TILE_SIZE * TILE_SIZE)            // 256
@@ -80,6 +84,17 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint GI : SV
 #endif
         GroupMemoryBarrierWithGroupSync();
     }
+    
+#if TILED_DEBUG_HEATMAP
+if (GI == 0)
+    {
+        const uint tileIndex = Gid.y * TileCount.x + Gid.x;
+        TileHits.Store(tileIndex * 4, hits);
+
+        if (tileIndex == 0)
+            TileHits.Store(TileCount.x * TileCount.y * 4, count);   // 마지막 칸 = 파티클 수
+    }
+#endif
 
     if (!inScreen)
         return;
@@ -89,7 +104,6 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint GI : SV
         Result[DTid.xy] = 0;
         return;
     }
-
     // 개수 차이가 크니 로그 스케일로
     const float t = saturate(log2(1.f + hits) / log2(1.f + HeatMax));
     const float a = 0.6f;

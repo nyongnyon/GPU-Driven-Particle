@@ -328,5 +328,8 @@
     <FxCompile Include="Shaders\ParticleLayeredRenderCS.hlsl">
       <Filter>Shaders\Particle</Filter>
     </FxCompile>
+    <FxCompile Include="Shaders\ParticleTiledCullOnly.hlsl">
+      <Filter>Shaders\Particle</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

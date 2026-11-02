@@ -5,6 +5,7 @@
 #include "PipelineState.h"
 #include "ParticleRenderTypes.h"
 #include "RenderTechnique.h"
+#include "ReadbackBuffer.h"
 
 class GraphicsContext;
 struct ParticleMaterial;
@@ -13,12 +14,21 @@ namespace Math { class Camera; }
 class ParticleTiledRenderer
 {
 public:
+	struct TileStats
+	{
+		uint64_t pairs = 0;     
+		uint32_t maxPerTile = 0;
+		uint32_t emptyTiles = 0;
+		uint32_t tiles = 0;
+		uint32_t particles = 0;
+		bool     valid = false;
+	};
+
 	static constexpr uint32_t kTileSize = 16;
 
 	void Initialize();
 	void Shutdown();
 
-	// sorted : ParticleDepthSorter::Sort()의 결과 (t0 = particles, t1 = 정렬 목록, indirectBuffer = 개수)
 	void Render(GraphicsContext& gfx, const Math::Camera& cam,
 		const Particles::DrawInput& sorted, const ParticleMaterial& material,
 		const ParticleRenderTarget& target);
@@ -27,16 +37,32 @@ private:
 	void EnsureSize(uint32_t width, uint32_t height);
 	void EnsureCapacity(uint32_t maxParticles);
 
+	void CollectStats();
+
 	RootSignature	m_TileSig;
 	ComputePSO		m_PrepPSO{ L"Particle Tile Prep CS" };
 	ComputePSO		m_TilePSO{ L"Particle Tiled Render CS" };
-
-	StructuredBuffer	m_TiledParticles;
-	uint32_t			m_Capacity = 0;
+	ComputePSO		m_CullOnlyPSO{ L"Particle Tiled CullOnly CS" };
 
 	RootSignature	m_CompositeSig;
 	GraphicsPSO		m_CompositePSO{ L"Particle Tiled Composite PSO" };
-
+	
+	StructuredBuffer	m_TiledParticles;
 	ColorBuffer		m_Result;	// rgb = premultiplied color / a =  1 - 투과
+
+	bool				m_CullOnly = true;
+	uint32_t			m_Capacity = 0;
+
+	//----------------------------
+	//			Read back
+	//----------------------------
+	static constexpr uint32_t kLatency = 3;
+	ByteAddressBuffer	m_TileHits;
+	ReadbackBuffer		m_StatsReadback[kLatency];
+	uint64_t          m_ReadbackFence[kLatency] = {};
+	uint32_t          m_ReadbackTiles[kLatency] = {};
+	uint32_t          m_StatsSlot = 0;
+	int32_t           m_PendingSlot = -1;
+	TileStats         m_LastStats;
 };
 

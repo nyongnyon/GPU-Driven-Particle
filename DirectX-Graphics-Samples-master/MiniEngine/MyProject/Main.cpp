@@ -218,7 +218,7 @@ void MyProject::Update(float deltaT)
     ProcessCaptures();
 
     GraphicsContext& gfx = GraphicsContext::Begin(L"Scene Update");
-    m_Sponza.Update(gfx, deltaT);
+    //m_Sponza.Update(gfx, deltaT);
     gfx.Finish();
 }
 
@@ -726,7 +726,7 @@ void MyProject::RenderScene(void)
     sorter.SetScissor(sc);
     sorter.SetDepthStencilTarget(g_SceneDepthBuffer);
     sorter.AddRenderTarget(g_SceneColorBuffer);
-    m_Sponza.Render(sorter);
+    //m_Sponza.Render(sorter);
     sorter.Sort();
     sorter.RenderMeshes(MeshSorter::kZPass, gfxContext, globals);
 
@@ -752,7 +752,7 @@ void MyProject::RenderScene(void)
     gfxContext.SetRenderTarget(g_SceneColorBuffer.GetRTV(), g_SceneDepthBuffer.GetDSV_DepthReadOnly());
     gfxContext.SetViewportAndScissor(vp, sc);
     sorter.RenderMeshes(MeshSorter::kOpaque, gfxContext, globals);
-    Renderer::DrawSkybox(gfxContext, m_Camera, vp, sc);
+    //Renderer::DrawSkybox(gfxContext, m_Camera, vp, sc);
     sorter.RenderMeshes(MeshSorter::kTransparent, gfxContext, globals);
 
     // ⑤ 기존 내용 (디버그 + 파티클)

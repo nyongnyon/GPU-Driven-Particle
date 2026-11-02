@@ -3,6 +3,10 @@
 
 #include "ParticleCommon.hlsli"
 
+#define TILE_SIZE_PX      16
+#define BATCH_SIZE        256
+#define BATCHES_PER_WORD  32
+
 cbuffer TileConstants : register(b0)
 {
     uint2 ScreenSize;
@@ -27,6 +31,12 @@ struct TiledParticle
     float viewDepth;
     uint pad;
 };
+
+// 파티클 50K, 스레드 수 256개 -> 50K / 256 = 약 196개의 배치 필요,
+uint WordsPerTile(uint count)
+{
+    return (count + BATCH_SIZE * BATCHES_PER_WORD - 1) / (BATCH_SIZE * BATCHES_PER_WORD);
+}
 
 // 스크린 좌표상 quad 위치, 크기
 bool GetScreenQuad(Particle p, out ScreenQuad quad, out float viewDepth)

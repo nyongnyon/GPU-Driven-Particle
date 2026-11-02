@@ -85,8 +85,6 @@ void main(uint3 DTid : SV_DispatchThreadID)
 
     if (visible)
     {
-        // 양수 float의 비트 패턴은 uint 대소 순서와 같다.
-        // 0은 내림차순 BitonicSort의 NullItem(패딩)이므로 최소값을 양수로 clamp
         const uint key = asuint(max(depth, 1e-6f));
         SortList.Store2((base + rank) * 8, uint2(slot, key));
     }
