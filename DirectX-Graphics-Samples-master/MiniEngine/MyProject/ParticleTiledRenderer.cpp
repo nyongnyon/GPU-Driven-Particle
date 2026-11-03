@@ -141,7 +141,7 @@ void ParticleTiledRenderer::EnsureBatchMask(uint32_t maxParticles, uint32_t tile
 	if (maxParticles == 0 || tiles == 0)
 		return;
 
-	const uint32_t wordsPerTile = (tiles + 256 * 32 - 1) / (256 * 32);
+	const uint32_t wordsPerTile = (maxParticles + 256 * 32 - 1) / (256 * 32);
 	const uint32_t needed = tiles * wordsPerTile;
 
 	if (needed == 0 || m_BatchMaskWords == needed)
