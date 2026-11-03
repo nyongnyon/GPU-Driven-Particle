@@ -56,6 +56,9 @@ public:
 	void							SetEmitterTechnique(EmitterHandle handle, Particles::ParticleTechnique technique);
 	Particles::ParticleTechnique	GetEmitterTechnique(EmitterHandle handle);
 
+	// 이번 프레임에 실제로 쓰이는 기법들 (TechniqueBit). 강제 모드면 그 기법 하나 : UI / 디버그 뷰용
+	uint32_t						GetRenderTechniqueMask() const;
+
 	// -----------------------
 	//		Settings
 	// -----------------------

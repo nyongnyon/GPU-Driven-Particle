@@ -27,7 +27,7 @@ struct ParticleSettings
 	float					colorIntensity = 1.0f;
 
 	// --- Render ---
-	// forceTechnique = true : 모든 이미터를 technique 하나로 (측정용, 레거시 WBOIT 계열은 여기서만)
+	// forceTechnique = true : 모든 이미터를 technique 하나로 (측정용)
 	// forceTechnique = false : 이미터마다 자기 기법 (ParticleWorld::SetEmitterTechnique)
 	bool						 forceTechnique = true;
 	Particles::ParticleTechnique technique = Particles::ParticleTechnique::Additive;

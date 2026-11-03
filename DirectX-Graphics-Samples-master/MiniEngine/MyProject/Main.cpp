@@ -303,9 +303,10 @@ void MyProject::UpdateImGui(float deltaT)
         static const Particles::ParticleTechnique kEmitterTechs[] =
         {
             Particles::ParticleTechnique::Additive, Particles::ParticleTechnique::PremultipliedAlpha,
-            Particles::ParticleTechnique::SortedAlpha, Particles::ParticleTechnique::TiledAlpha,
+            Particles::ParticleTechnique::WeightedOIT, Particles::ParticleTechnique::SortedAlpha,
+            Particles::ParticleTechnique::TiledAlpha, Particles::ParticleTechnique::TiledLayeredWBOIT,
         };
-        static const char* kEmitterTechLabels[] = { "Additive", "Premultiplied", "Sorted Alpha", "Tiled Alpha" };
+        static const char* kEmitterTechLabels[] = { "Additive", "Premultiplied", "WBOIT", "Sorted Alpha", "Tiled Alpha", "Tiled Layered WBOIT" };
 
         uint32_t occluding = 0;     // 가리는(Alpha 계열) 기법이 몇 종류 쓰이는가
         bool usedTech[IM_ARRAYSIZE(kEmitterTechs)] = {};
@@ -392,18 +393,23 @@ void MyProject::UpdateImGui(float deltaT)
         int tech = (int)m_Draft.technique;
         ImGui::RadioButton("Additive", &tech, (int)Particles::ParticleTechnique::Additive); ImGui::SameLine();
         ImGui::RadioButton("Premultiplied", &tech, (int)Particles::ParticleTechnique::PremultipliedAlpha); ImGui::SameLine();
-        ImGui::RadioButton("Sorted Alpha", &tech, (int)Particles::ParticleTechnique::SortedAlpha);
-        ImGui::RadioButton("Tiled Alpha", &tech, (int)Particles::ParticleTechnique::TiledAlpha);
-        // 레거시 : 이미터별 선택에는 없고, 강제 모드에서만 돌려 볼 수 있다
-        ImGui::TextDisabled("legacy (forced only)");
         ImGui::RadioButton("WBOIT", &tech, (int)Particles::ParticleTechnique::WeightedOIT); ImGui::SameLine();
+        ImGui::RadioButton("Sorted Alpha", &tech, (int)Particles::ParticleTechnique::SortedAlpha);
+        ImGui::RadioButton("Tiled Alpha", &tech, (int)Particles::ParticleTechnique::TiledAlpha); ImGui::SameLine();
         ImGui::RadioButton("Tiled Layered WBOIT", &tech, (int)Particles::ParticleTechnique::TiledLayeredWBOIT);
         ImGui::EndDisabled();
 
         m_Draft.technique = (Particles::ParticleTechnique)tech;
 
+        // 이번 프레임에 쓰이는 기법 (강제면 그 하나, 아니면 이미터들의 기법)
+        const uint32_t usedTechs = m_Particles.GetRenderTechniqueMask();
+        const auto isUsed = [usedTechs](Particles::ParticleTechnique t) { return (usedTechs & Particles::TechniqueBit(t)) != 0; };
+
         // Layered WBOIT : slice 수가 정확도(정렬에 가까움)와 비용 사이의 다이얼
-        if (m_Draft.forceTechnique && m_Draft.technique == Particles::ParticleTechnique::TiledLayeredWBOIT)
+        const bool layeredInDraft = m_Draft.forceTechnique
+            ? (m_Draft.technique == Particles::ParticleTechnique::TiledLayeredWBOIT)
+            : isUsed(Particles::ParticleTechnique::TiledLayeredWBOIT);
+        if (layeredInDraft)
         {
             int slices = (int)m_Draft.layeredSlices;
             if (ImGui::SliderInt("Slices", &slices, 1, 64))
@@ -431,11 +437,11 @@ void MyProject::UpdateImGui(float deltaT)
         ImGui::EndDisabled();
 
         // 조기 종료 확인용 히트맵 (Apply 없이 즉시 반영) : 파랑 = 앞쪽 slice 몇 장만 보고 끝, 빨강 = 끝까지 다 봄
-        if (m_Particles.GetSettings().forceTechnique && m_Particles.GetSettings().technique == Particles::ParticleTechnique::TiledLayeredWBOIT)
+        if (isUsed(Particles::ParticleTechnique::TiledLayeredWBOIT))
             ImGui::Checkbox("Slice heatmap (early-out)", &m_Particles.GetRenderer().LayeredOptions().debugView);
 
         // WBOIT render targets in a separate window (the extra pass is skipped while recording)
-        if (m_Particles.GetSettings().forceTechnique && m_Particles.GetSettings().technique == Particles::ParticleTechnique::WeightedOIT)
+        if (isUsed(Particles::ParticleTechnique::WeightedOIT))
             ImGui::Checkbox("Show WBOIT targets", &m_ShowWBOITTargets);
 
         // 측정 조건이 의도와 달라지는 경우 경고
@@ -501,8 +507,8 @@ void MyProject::UpdateImGui(float deltaT)
 
     {
         WBOITTechnique& wboit = m_Particles.GetRenderer().WBOIT();
-        const bool wboitApplied = m_Particles.GetSettings().forceTechnique
-            && (m_Particles.GetSettings().technique == Particles::ParticleTechnique::WeightedOIT);
+        const bool wboitApplied = (m_Particles.GetRenderTechniqueMask()
+            & Particles::TechniqueBit(Particles::ParticleTechnique::WeightedOIT)) != 0;
         const bool showTargets = m_ShowWBOITTargets && wboitApplied;
         wboit.GetDebugOptions().enabled = showTargets && !m_Recorder.IsBusy();
 

@@ -335,6 +335,11 @@ ParticleWorld::EmitterSlot* ParticleWorld::FindSlot(EmitterHandle handle)
 	return &slot;
 }
 
+uint32_t ParticleWorld::GetRenderTechniqueMask() const
+{
+	return m_Settings.forceTechnique ? TechniqueBit(m_Settings.technique) : UsedTechniqueMask();
+}
+
 uint32_t ParticleWorld::UsedTechniqueMask() const
 {
 	uint32_t mask = 0;

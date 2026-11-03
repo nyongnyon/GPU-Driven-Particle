@@ -23,7 +23,7 @@ public:
 	void Initialize();
 	void Shutdown();
 
-	// 전체 강제 모드 : 풀 전체를 SetTechnique()의 기법 하나로 (레거시 WBOIT 계열은 여기서만)
+	// 전체 강제 모드 : 풀 전체를 SetTechnique()의 기법 하나로
 	void Render(GraphicsContext& gfx, const Math::Camera& cam, 
 		const Particles::DrawInput& input, const ParticleMaterial& material,
 		const ParticleRenderTarget& target);
