@@ -26,8 +26,8 @@ namespace
 	// t0 particles, t1 정렬 목록, t2 개수(DrawArgs), t3/t4 예비, t5 TiledParticles
 	constexpr uint32_t kNumTileSRVs = 6;
 
-	// u0 Result, u1 TiledParticles (Prep CS)
-	constexpr uint32_t kNumTileUAVs = 3; 
+	// u0 : Result, u1 : TiledParticles, u2 : , u3 : 
+	constexpr uint32_t kNumTileUAVs = 4; 
 	
 	constexpr uint32_t kNumParticleStride = 32;
 
@@ -89,6 +89,9 @@ void ParticleTiledRenderer::Shutdown()
 	m_TiledParticles.Destroy();
 	m_Capacity = 0;
 
+	m_TiledBatchMask.Destroy();
+	m_BatchMaskWords = 0;
+
 	m_TileHits.Destroy();
 	for (uint32_t i = 0; i < kLatency; ++i)
 		m_StatsReadback[i].Destroy();
@@ -133,6 +136,24 @@ void ParticleTiledRenderer::EnsureCapacity(uint32_t maxParticles)
 	m_Capacity = maxParticles;
 }
 
+void ParticleTiledRenderer::EnsureBatchMask(uint32_t maxParticles, uint32_t tiles)
+{
+	if (maxParticles == 0 || tiles == 0)
+		return;
+
+	const uint32_t wordsPerTile = (tiles + 256 * 32 - 1) / (256 * 32);
+	const uint32_t needed = tiles * wordsPerTile;
+
+	if (needed == 0 || m_BatchMaskWords == needed)
+		return;
+
+	if (m_BatchMaskWords != 0)
+		g_CommandManager.IdleGPU();
+
+	m_TiledBatchMask.Create(L"Tiled Particle Batch Mask", needed, sizeof(uint32_t));
+	m_BatchMaskWords = needed;
+}
+
 void ParticleTiledRenderer::CollectStats()
 {
 	const uint32_t s = m_StatsSlot;
@@ -163,17 +184,18 @@ void ParticleTiledRenderer::Render(GraphicsContext& gfx, const Math::Camera& cam
 	const ParticleRenderTarget& target)
 {
 	
-
 	const uint32_t w = target.color.GetWidth();
 	const uint32_t h = target.color.GetHeight();
-	EnsureSize(w, h);
-	EnsureCapacity(sorted.maxParticle);
 
-	// readback
 	const uint32_t tileCountX = (w + kTileSize - 1) / kTileSize;
 	const uint32_t tileCountY = (h + kTileSize - 1) / kTileSize;
 	const uint32_t tileCount = tileCountX * tileCountY;
 
+	EnsureSize(w, h);
+	EnsureCapacity(sorted.maxParticle);
+	EnsureBatchMask(sorted.maxParticle,  tileCount);
+
+	// readback
 	if (m_PendingSlot >= 0)
 	{
 		m_ReadbackFence[m_PendingSlot] = g_CommandManager.GetGraphicsQueue().GetNextFenceValue() - 1;
@@ -181,7 +203,7 @@ void ParticleTiledRenderer::Render(GraphicsContext& gfx, const Math::Camera& cam
 	}
 	CollectStats();
 	
-	// temp
+	// temp: imgui collect
 	if (ImGui::GetCurrentContext() != nullptr)   // ImGui를 끈 빌드에서 크래시 방지
 	{
 		ImGui::Begin("Tiled Stats");
@@ -209,13 +231,17 @@ void ParticleTiledRenderer::Render(GraphicsContext& gfx, const Math::Camera& cam
 		ImGui::End();
 	}
 
-	// render
+	// 
 	ComputeContext& cc = gfx.GetComputeContext();
 
 	cc.TransitionResource(*sorted.indirectBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	cc.TransitionResource(m_Result, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-	cc.TransitionResource(m_TiledParticles, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
-	
+	cc.TransitionResource(m_TiledParticles, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	cc.TransitionResource(m_TiledBatchMask, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
+
+	cc.ClearUAV(m_TiledBatchMask);                                                       
+	cc.InsertUAVBarrier(m_TiledBatchMask, true);                                         
+
 	cc.SetRootSignature(m_TileSig);
 
 	{
@@ -237,6 +263,9 @@ void ParticleTiledRenderer::Render(GraphicsContext& gfx, const Math::Camera& cam
 		cc.SetDynamicConstantBufferView(kTileCBV, sizeof(tc), &tc);
 	}
 
+	//----------------------
+	//		Prep
+	//----------------------
 	{
 		ScopedTimer _t(L"Particle Tiled Prep", cc);
 		cc.SetPipelineState(m_PrepPSO);		
@@ -251,17 +280,18 @@ void ParticleTiledRenderer::Render(GraphicsContext& gfx, const Math::Camera& cam
 			sorted.srvs[0],						// t5 (이 패스에선 미사용)
 		};
 
-		const D3D12_CPU_DESCRIPTOR_HANDLE uavs[kNumTileUAVs] = { m_Result.GetUAV(), m_TiledParticles.GetUAV(), m_TileHits.GetUAV()};
+		const D3D12_CPU_DESCRIPTOR_HANDLE uavs[kNumTileUAVs] = { m_Result.GetUAV(), m_TiledParticles.GetUAV(), m_TileHits.GetUAV(), m_TiledBatchMask.GetUAV()};
 
 		cc.SetDynamicDescriptors(kTileSRVs, 0, kNumTileSRVs, srvs);
 		cc.SetDynamicDescriptors(kTileUAVs, 0, kNumTileUAVs, uavs);
 		cc.Dispatch1D(sorted.maxParticle, 64);
 	}
 	
+	cc.InsertUAVBarrier(m_TiledBatchMask);                    
 	cc.TransitionResource(m_TiledParticles, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	cc.TransitionResource(m_TileHits, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
+	cc.TransitionResource(m_TileHits, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);  
 
-
+	// tiled (rendering)
 	{
 		ScopedTimer _t(L"Particle Tiled", cc);
 		// CullOnly or Default
@@ -277,7 +307,7 @@ void ParticleTiledRenderer::Render(GraphicsContext& gfx, const Math::Camera& cam
 			m_TiledParticles.GetSRV(),			// t5 TiledParticles
 		};
 
-		const D3D12_CPU_DESCRIPTOR_HANDLE uavs[kNumTileUAVs] = { m_Result.GetUAV(), m_Result.GetUAV(), m_TileHits.GetUAV() };
+		const D3D12_CPU_DESCRIPTOR_HANDLE uavs[kNumTileUAVs] = { m_Result.GetUAV(), m_Result.GetUAV(), m_TileHits.GetUAV(), m_TiledBatchMask.GetUAV()};
 		cc.SetDynamicDescriptors(kTileSRVs, 0, kNumTileSRVs, srvs);
 		cc.SetDynamicDescriptors(kTileUAVs, 0, kNumTileUAVs, uavs);
 

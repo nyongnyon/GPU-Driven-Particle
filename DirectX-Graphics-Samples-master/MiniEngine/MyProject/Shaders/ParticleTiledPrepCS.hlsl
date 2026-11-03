@@ -31,9 +31,9 @@ void main(uint3 DTid : SV_DispatchThreadID)
     const int2 tMin = max((int2) floor(pMin / TILE_SIZE_PX), 0);
     const int2 tMax = min((int2) floor(pMax / TILE_SIZE_PX), (int2) TileCount - 1);
 
-    const uint wordsPerTile = WordsPerTile(count);
-    const uint batch = id / BATCH_SIZE;
-    const uint wordInTile = batch / BATCHES_PER_WORD;
+    const uint wordsPerTile = WordsPerTile(count);  // maxParticles(50000) / (256 * 32)의 올림 = 7? 8?
+    const uint batch = id / BATCH_SIZE;     // id / 256 = 내 batch id, 5번가정
+    const uint wordInTile = batch / BATCHES_PER_WORD;   // 5번 / 32 = 0
     const uint bit = 1u << (batch % BATCHES_PER_WORD);
     
     for (int y = tMin.y; y <= tMax.y; ++y)

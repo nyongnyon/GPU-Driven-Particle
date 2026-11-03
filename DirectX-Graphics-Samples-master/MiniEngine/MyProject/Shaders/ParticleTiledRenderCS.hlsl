@@ -13,13 +13,16 @@ RWTexture2D<float4> Result : register(u0);
 RWByteAddressBuffer TileHits : register(u2);
 #endif
 
+RWByteAddressBuffer TileBatchMask : register(u3);
+
 
 #define TILE_SIZE   16
 #define GROUP_THREADS (TILE_SIZE * TILE_SIZE)            // 256
 #define MASK_WORDS   (GROUP_THREADS / 32)                // 8
-#define MIN_TRANSMITTANCE (1.0f / 255.0f)
+#define MIN_TRANSMITTANCE (5.0f / 255.0f)
 
 groupshared uint gs_HitMask[MASK_WORDS];
+groupshared uint gs_BatchWord;
 
 
 #if TILED_DEBUG_HEATMAP
@@ -41,54 +44,72 @@ void main(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint GI : SV
     const float2 tileMax = tileMin + TILE_SIZE;
 
     const uint count = DrawArgs.Load(4);
+    const uint tileIndex = Gid.y * TileCount.x + Gid.x;
+    const uint wordsPerTile = WordsPerTile(count);
     
     float3 color = 0.f;
     float T = 1.f;
     uint hits = 0; // for hitmap
-
-    for (uint base = 0; base < count; base += GROUP_THREADS)
+        
+    // for 
+    for (uint wIdx = 0; wIdx < wordsPerTile; ++wIdx)
     {
-        if (GI < MASK_WORDS)
-            gs_HitMask[GI] = 0;
+        if (GI == 0)
+            gs_BatchWord = TileBatchMask.Load((tileIndex * wordsPerTile + wIdx) * 4);
         GroupMemoryBarrierWithGroupSync();
-
-        const uint j = base + GI;
-        if (j < count && OverlapsTile(TiledParticles[j], tileMin, tileMax))
+        
+        uint batchBits = gs_BatchWord;
+        GroupMemoryBarrierWithGroupSync();
+        
+        while (batchBits != 0)
         {
-            InterlockedOr(gs_HitMask[GI >> 5], 1u << (GI & 31));
-        }
-        GroupMemoryBarrierWithGroupSync();
+            const uint batch = wIdx * BATCHES_PER_WORD + firstbitlow(batchBits);
+            batchBits &= batchBits - 1; // 처리한 비트 지우기
+
+            const uint base = batch * GROUP_THREADS;
+            
+            if (GI < MASK_WORDS)
+                gs_HitMask[GI] = 0;
+            GroupMemoryBarrierWithGroupSync();
+
+            const uint j = base + GI;
+            if (j < count && OverlapsTile(TiledParticles[j], tileMin, tileMax))
+            {
+                InterlockedOr(gs_HitMask[GI >> 5], 1u << (GI & 31));
+            }
+            GroupMemoryBarrierWithGroupSync();
 
 #if TILED_DEBUG_HEATMAP
         [unroll]
         for (uint w = 0; w < MASK_WORDS; ++w)
             hits += countbits(gs_HitMask[w]);
 #else
-        if (inScreen)
-        {
-            for (uint w = 0; w < MASK_WORDS && T > MIN_TRANSMITTANCE; ++w)
+            if (inScreen)
             {
-                uint bits = gs_HitMask[w];
-                while (bits != 0 && T > MIN_TRANSMITTANCE)
+                for (uint w = 0; w < MASK_WORDS && T > MIN_TRANSMITTANCE; ++w)
                 {
-                    const uint k = firstbitlow(bits); 
-                    bits &= bits - 1;
+                    uint bits = gs_HitMask[w];
+                    while (bits != 0 && T > MIN_TRANSMITTANCE)
+                    {
+                        const uint k = firstbitlow(bits);
+                        bits &= bits - 1;
 
-                    const float4 c = ShadeAtPixel(TiledParticles[base + w * 32 + k], pixelCenter);
+                        const float4 c = ShadeAtPixel(TiledParticles[base + w * 32 + k], pixelCenter);
 
-                    color += T * c.rgb;
-                    T *= 1.f - c.a;
+                        color += T * c.rgb;
+                        T *= 1.f - c.a;
+                    }
                 }
             }
-        }        
 #endif
-        GroupMemoryBarrierWithGroupSync();
+            GroupMemoryBarrierWithGroupSync();
+        }
+        
     }
     
 #if TILED_DEBUG_HEATMAP
 if (GI == 0)
     {
-        const uint tileIndex = Gid.y * TileCount.x + Gid.x;
         TileHits.Store(tileIndex * 4, hits);
 
         if (tileIndex == 0)

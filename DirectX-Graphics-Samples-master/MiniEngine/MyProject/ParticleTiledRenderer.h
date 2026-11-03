@@ -36,6 +36,7 @@ public:
 private:
 	void EnsureSize(uint32_t width, uint32_t height);
 	void EnsureCapacity(uint32_t maxParticles);
+	void EnsureBatchMask(uint32_t maxParticles, uint32_t tiles);
 
 	void CollectStats();
 
@@ -48,11 +49,12 @@ private:
 	GraphicsPSO		m_CompositePSO{ L"Particle Tiled Composite PSO" };
 	
 	StructuredBuffer	m_TiledParticles;
-	ColorBuffer		m_Result;	// rgb = premultiplied color / a =  1 - 투과
+	ByteAddressBuffer	m_TiledBatchMask;
+	ColorBuffer			m_Result;	// rgb = premultiplied color / a =  1 - 투과
 
-	bool				m_CullOnly = true;
+	bool				m_CullOnly = false;
 	uint32_t			m_Capacity = 0;
-
+	uint32_t			m_BatchMaskWords = 0;
 	//----------------------------
 	//			Read back
 	//----------------------------
