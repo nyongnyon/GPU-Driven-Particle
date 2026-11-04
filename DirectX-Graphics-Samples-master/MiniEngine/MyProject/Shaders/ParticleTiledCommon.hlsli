@@ -15,6 +15,10 @@ cbuffer TileConstants : register(b0)
     float2 ProjScale;
     float HeatMax;
     float NearClip;
+    float farClip;
+    float zMagic;
+    float invSoftDistance;
+    float pad;
 };
 
 struct ScreenQuad

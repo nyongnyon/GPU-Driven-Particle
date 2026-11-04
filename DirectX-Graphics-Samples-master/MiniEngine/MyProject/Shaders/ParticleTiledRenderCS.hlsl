@@ -5,15 +5,17 @@
 #endif
 
 
-ByteAddressBuffer DrawArgs : register(t2); // offset 4 = 정렬된 개수
-StructuredBuffer<TiledParticle> TiledParticles : register(t5); //
+ByteAddressBuffer DrawArgs : register(t0); // offset 4 = 정렬된 개수
+StructuredBuffer<TiledParticle> TiledParticles : register(t1); //
+Texture2D<float> SceneDepth : register(t2);
+
 
 RWTexture2D<float4> Result : register(u0);
 #if TILED_DEBUG_HEATMAP
-RWByteAddressBuffer TileHits : register(u2);
+RWByteAddressBuffer TileHits : register(u1);
 #endif
 
-RWByteAddressBuffer TileBatchMask : register(u3);
+RWByteAddressBuffer TileBatchMask : register(u2);
 
 
 #define TILE_SIZE   16

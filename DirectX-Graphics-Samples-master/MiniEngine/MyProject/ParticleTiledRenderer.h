@@ -55,6 +55,8 @@ private:
 	bool				m_CullOnly = false;
 	uint32_t			m_Capacity = 0;
 	uint32_t			m_BatchMaskWords = 0;
+	float				m_SoftDistance = 0.f;
+	
 	//----------------------------
 	//			Read back
 	//----------------------------

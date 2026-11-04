@@ -38,9 +38,13 @@ namespace
 		DirectX::XMFLOAT4X4 viewProj;
 		float projScaleX, projScaleY;
 		float heatMax; // 히트맵 최대값 (디버그용)
-		float nearClip;		
+		float nearClip;	
+		float farClip;
+		float zMagic;
+		float invSoftDistance;
+		float pad;
 	};
-	static_assert(sizeof(TileConstants) == 96, "HLSL TileConstants(96 B)와 일치해야 함");
+	static_assert(sizeof(TileConstants) == 112, "HLSL TileConstants(112 B)와 일치해야 함");
 
 
 	constexpr DXGI_FORMAT kResultFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
@@ -237,7 +241,10 @@ void ParticleTiledRenderer::Render(GraphicsContext& gfx, const Math::Camera& cam
 	cc.TransitionResource(*sorted.indirectBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	cc.TransitionResource(m_Result, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	cc.TransitionResource(m_TiledParticles, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-	cc.TransitionResource(m_TiledBatchMask, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true);
+
+	cc.TransitionResource(target.depth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);   // [추가]
+	cc.TransitionResource(m_TiledBatchMask, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, true); 
+
 
 	cc.ClearUAV(m_TiledBatchMask);                                                       
 	cc.InsertUAVBarrier(m_TiledBatchMask, true);                                         
@@ -299,15 +306,15 @@ void ParticleTiledRenderer::Render(GraphicsContext& gfx, const Math::Camera& cam
 
 		const D3D12_CPU_DESCRIPTOR_HANDLE srvs[kNumTileSRVs] =
 		{
+			sorted.indirectBuffer->GetSRV(),	// t0 indirect buffer
+			m_TiledParticles.GetSRV(),			// t1 TiledParticles
+			target.depth.GetDepthSRV(),
 			sorted.srvs[0],					
-			sorted.srvs[1],					
-			sorted.indirectBuffer->GetSRV(),
 			sorted.srvs[0],					
 			sorted.srvs[0],					
-			m_TiledParticles.GetSRV(),			// t5 TiledParticles
 		};
 
-		const D3D12_CPU_DESCRIPTOR_HANDLE uavs[kNumTileUAVs] = { m_Result.GetUAV(), m_Result.GetUAV(), m_TileHits.GetUAV(), m_TiledBatchMask.GetUAV()};
+		const D3D12_CPU_DESCRIPTOR_HANDLE uavs[kNumTileUAVs] = { m_Result.GetUAV(), m_TileHits.GetUAV(), m_TiledBatchMask.GetUAV(), m_Result.GetUAV()};
 		cc.SetDynamicDescriptors(kTileSRVs, 0, kNumTileSRVs, srvs);
 		cc.SetDynamicDescriptors(kTileUAVs, 0, kNumTileUAVs, uavs);
 
@@ -324,7 +331,6 @@ void ParticleTiledRenderer::Render(GraphicsContext& gfx, const Math::Camera& cam
 		m_PendingSlot = static_cast<int32_t>(m_StatsSlot);
 		m_StatsSlot = (m_StatsSlot + 1) % kLatency;
 	}
-
 
 
 	// composite
