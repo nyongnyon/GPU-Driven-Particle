@@ -60,6 +60,8 @@ namespace Particles
 		DirectX::XMFLOAT4	camUp;
 	};
 
+	
+	
 	// Pool 방식은 AliveList + Indirect + Wave 하나로 고정 (측정 CSV의 mode 열에 이 이름을 기록)
 	static constexpr const char* kPoolTechniqueName = "AliveIndirectWave";
 

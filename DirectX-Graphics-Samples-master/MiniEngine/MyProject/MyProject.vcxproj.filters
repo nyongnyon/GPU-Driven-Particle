@@ -30,6 +30,9 @@
     <Filter Include="Particle\Emitter">
       <UniqueIdentifier>{1c2093a9-1b54-4860-a89e-ea0bac92f009}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Particle\Modules">
+      <UniqueIdentifier>{8d3d7f7f-f029-40b4-9bc1-1fa097ba2d8d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -60,6 +63,27 @@
     <ClCompile Include="ParticleSettings.cpp">
       <Filter>Particle\ParticleSystem</Filter>
     </ClCompile>
+    <ClCompile Include="ModuleDesc.cpp">
+      <Filter>Particle\Modules</Filter>
+    </ClCompile>
+    <ClCompile Include="AttributeLayout.cpp">
+      <Filter>Particle\Modules</Filter>
+    </ClCompile>
+    <ClCompile Include="AttributeKey.cpp">
+      <Filter>Particle\Modules</Filter>
+    </ClCompile>
+    <ClCompile Include="AttributeType.cpp">
+      <Filter>Particle\Modules</Filter>
+    </ClCompile>
+    <ClCompile Include="LayoutBuilder.cpp">
+      <Filter>Particle\Modules</Filter>
+    </ClCompile>
+    <ClCompile Include="CompiledEmitter.cpp">
+      <Filter>Particle\Emitter</Filter>
+    </ClCompile>
+    <ClCompile Include="EmitterCompiler.cpp">
+      <Filter>Particle\Emitter</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
@@ -89,6 +113,30 @@
     </ClInclude>
     <ClInclude Include="ParticleSettings.h">
       <Filter>Particle\ParticleSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="ModuleDesc.h">
+      <Filter>Particle\Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="AttributeLayout.h">
+      <Filter>Particle\Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="AttributeKey.h">
+      <Filter>Particle\Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="AttributeType.h">
+      <Filter>Particle\Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="LayoutBuilder.h">
+      <Filter>Particle\Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="ParticleNamespace.h">
+      <Filter>Particle\Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="CompiledEmitter.h">
+      <Filter>Particle\Emitter</Filter>
+    </ClInclude>
+    <ClInclude Include="EmitterCompiler.h">
+      <Filter>Particle\Emitter</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

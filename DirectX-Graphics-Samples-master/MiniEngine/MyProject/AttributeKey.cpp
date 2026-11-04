@@ -1,0 +1,41 @@
+#include "pch.h"
+#include "AttributeKey.h"
+
+AttributeKey AttributeKey::Parse(const std::string& full)
+{
+    std::vector<std::string> tok;
+    std::stringstream ss(full);
+    std::string part;
+
+    while (std::getline(ss, part, '.')) tok.push_back(part);
+
+    AttributeKey k;
+    if (tok.size() < 2) return k;
+    k.ns = ParseNamespace(tok[0]);
+
+    size_t i = 1;
+    if (tok.size() > 2) {
+        if (tok[1] == "Previous") { k.mod = Modifier::Previous; i = 2; }
+        else if (tok[1] == "Initial") { k.mod = Modifier::Initial; i = 2; }
+    }
+    for (; i < tok.size(); ++i) {
+        if (!k.name.empty()) k.name += ".";
+        k.name += tok[i];
+    }
+    return k;
+}
+
+std::string AttributeKey::Full() const
+{
+    std::string s = NamespaceName(ns);
+    if (mod == Modifier::Previous) s += ".Previous";
+    if (mod == Modifier::Initial)  s += ".Initial";
+    return s + "." + name;
+}
+
+AttributeKey AttributeKey::Base() const
+{
+    AttributeKey b = *this;
+    b.mod = Modifier::None;
+    return b;
+}

@@ -55,8 +55,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="AttributeKey.h" />
+    <ClInclude Include="AttributeLayout.h" />
+    <ClInclude Include="AttributeType.h" />
+    <ClInclude Include="CompiledEmitter.h" />
     <ClInclude Include="DebugDraw.h" />
+    <ClInclude Include="EmitterCompiler.h" />
+    <ClInclude Include="LayoutBuilder.h" />
+    <ClInclude Include="ModuleDesc.h" />
     <ClInclude Include="ParticleEmitter.h" />
+    <ClInclude Include="ParticleNamespace.h" />
     <ClInclude Include="ParticlePool.h" />
     <ClInclude Include="ParticleSettings.h" />
     <ClInclude Include="ParticleSystem.h" />
@@ -67,7 +75,14 @@
     <ClInclude Include="TexturedQuad.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="AttributeKey.cpp" />
+    <ClCompile Include="AttributeLayout.cpp" />
+    <ClCompile Include="AttributeType.cpp" />
+    <ClCompile Include="CompiledEmitter.cpp" />
     <ClCompile Include="DebugDraw.cpp" />
+    <ClCompile Include="EmitterCompiler.cpp" />
+    <ClCompile Include="LayoutBuilder.cpp" />
+    <ClCompile Include="ModuleDesc.cpp" />
     <ClCompile Include="ParticleEmitter.cpp" />
     <ClCompile Include="ParticlePool.cpp" />
     <ClCompile Include="Main.cpp" />
