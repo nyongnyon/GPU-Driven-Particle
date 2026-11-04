@@ -14,53 +14,28 @@ enum class Stage
     ParticleUpdate 
 };
 
-inline int StageLevel(Stage s)   // 0 = System, 1 = Emitter, 2 = Particle
-{
-    switch (s) 
-    {
-    case Stage::SystemSpawn:
-    case Stage::SystemUpdate:   return 0;
-    case Stage::EmitterSpawn:
-    case Stage::EmitterUpdate:  return 1;
-    default:                    return 2;
-    }
-}
+int         StageLevel(Stage s);   // 0 = System, 1 = Emitter, 2 = Particle
+const char* StageName(Stage s);
 
-inline const char* StageName(Stage s)
+// 값 하나 사용: 전체 이름 + 자료형
+struct Usage
 {
-    switch (s) 
-    {
-    case Stage::SystemSpawn:    return "SystemSpawn";
-    case Stage::SystemUpdate:   return "SystemUpdate";
-    case Stage::EmitterSpawn:   return "EmitterSpawn";
-    case Stage::EmitterUpdate:  return "EmitterUpdate";
-    case Stage::ParticleSpawn:  return "ParticleSpawn";
-    case Stage::ParticleUpdate: return "ParticleUpdate";
-    }
-    return "?";
-}
-
-// 이름 + 타입
-struct Usage 
-{
-    std::string attr;   // 전체 이름: "Particles.Previous.Position"
-    AttrType    type;
+    std::string     attr;   // 전체 이름: "Particles.Previous.Position"
+    const TypeInfo* type;   // 예: &Types::Float3
 };
 
-// 실제 모듈이 사용할 구조체
+// 모듈 선언 (값으로 복사해서 저장할 수 있도록 일반 구조체로 둔다)
 struct ModuleDesc
 {
-public:
-	virtual ~ModuleDesc() = default;
-	virtual std::string Name() const = 0;
-
-	virtual std::vector<Usage> GetReads() { return {}; }
-	virtual std::vector<Usage> GetWrites() { return {}; }
+    std::string        name;
+    Stage              stage;
+    std::vector<Usage> reads;
+    std::vector<Usage> writes;
 };
 
-struct RendererDesc 
+// 렌더러(또는 엔진 단계)는 읽기만 한다
+struct RendererDesc
 {
     std::string        name;
     std::vector<Usage> reads;
 };
-

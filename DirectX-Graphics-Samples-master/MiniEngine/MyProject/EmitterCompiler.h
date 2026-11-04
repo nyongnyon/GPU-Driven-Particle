@@ -5,15 +5,14 @@
 class EmitterCompiler
 {
 public:
-	EmitterCompiler& Add(const ModuleDesc& m) { modules_.push_back(m); return *this; }
-	EmitterCompiler& Add(const RendererDesc& r) { renderers_.push_back(r); return *this; }
-	EmitterCompiler& SetTrim(bool b) { trim_ = b; return *this; }
+    EmitterCompiler& Add(const ModuleDesc& m) { m_Modules.push_back(m);   return *this; }
+    EmitterCompiler& Add(const RendererDesc& r) { m_Renderers.push_back(r); return *this; }
+    EmitterCompiler& SetTrim(bool enable) { m_Trim = enable;          return *this; }
 
-	CompiledEmitter Compile() const;
+    CompiledEmitter Compile() const;
 
 private:
-	std::vector<ModuleDesc>   modules_;
-	std::vector<RendererDesc> renderers_;
-	bool trim_ = true;
+    std::vector<ModuleDesc>   m_Modules;
+    std::vector<RendererDesc> m_Renderers;
+    bool                      m_Trim = true;
 };
-

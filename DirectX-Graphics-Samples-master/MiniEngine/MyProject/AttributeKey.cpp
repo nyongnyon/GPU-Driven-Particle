@@ -39,3 +39,19 @@ AttributeKey AttributeKey::Base() const
     b.mod = Modifier::None;
     return b;
 }
+
+Storage AttributeKey::GetStorage() const
+{
+    switch (ns)
+    {
+    case Namespace::Particles: return Storage::ParticleBuffer;   // 파티클마다 1개 (SoA 버퍼)
+    case Namespace::Emitter:   return Storage::EmitterStore;     // Emitter 당 1개
+    case Namespace::System:
+    case Namespace::User:      return Storage::SystemStore;      // System 당 1개
+    case Namespace::Engine:    return Storage::EngineProvided;   // 엔진이 줌 (DeltaTime 등)
+    case Namespace::Transient:
+    case Namespace::Output:
+    case Namespace::Local:     return Storage::Temporary;        // 단계 안에서만 쓰는 임시값
+    default:                   return Storage::Invalid;
+    }
+}
