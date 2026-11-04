@@ -85,7 +85,6 @@ void MyProject::Startup( void )
     m_CameraController.reset(NewCam);
 
     // Setup your data
-    m_Draft.mode = Particles::Mode::Default;
     m_Draft.maxParticles = 1'000'000;
     m_Draft.steadyRatio = 0.5f;
     m_Particles.Initialize(m_Draft, Vector3(0.f, 0.f, 0.f));
@@ -94,9 +93,9 @@ void MyProject::Startup( void )
     m_Recorder.SetTimers({
     L"Particle Update",     // 컴퓨트 전체
     L"Particle Emit",
-    L"Particle ArgsPre",    // Indirect만 있음
+    L"Particle ArgsPre",    // alive 수 -> Simulate Dispatch Args
     L"Particle Simulate",
-    L"Particle AfterSim",   // Alive 계열만 있음
+    L"Particle AfterSim",   // 살아남은 수 확정 + Draw Args
     L"Particle Draw" });
 }
 
@@ -174,15 +173,7 @@ void MyProject::UpdateImGui( float deltaT )
         ImGui::BeginDisabled(m_Recorder.IsBusy());      // 기록 중에는 조건 변경 금지
         ImGui::SeparatorText("Settings (edit -> Apply)");
 
-        // Mode
-        int mode = (int)m_Draft.mode;
-        ImGui::RadioButton("FullScan", &mode, 1);
-        ImGui::RadioButton("SlotReuse", &mode, 2); ImGui::SameLine();
-        ImGui::RadioButton("SlotReuseFlags", &mode, 3);
-        ImGui::RadioButton("AliveDirect", &mode, 4); ImGui::SameLine();
-        ImGui::RadioButton("AliveIndirect", &mode, 5); ImGui::SameLine();
-        ImGui::RadioButton("AliveIndirectWave", &mode, 6);
-        m_Draft.mode = Particles::Mode(mode);
+        ImGui::TextDisabled("Pool: %s", Particles::kPoolTechniqueName);
 
         // Max particles
         static const uint32_t kMaxOptions[] = { 10'000, 100'000, 1'000'000 };
@@ -228,7 +219,7 @@ void MyProject::UpdateImGui( float deltaT )
 
         const ParticleSettings& s = m_Particles.GetSettings();
         ImGui::TextDisabled("applied: %s, %u, steady %.2f, burst %.2f / %.1fs, life %.1f~%.1f",
-            Particles::ModeName(s.mode), s.maxParticles, s.steadyRatio, s.burstRatio,
+            Particles::kPoolTechniqueName, s.maxParticles, s.steadyRatio, s.burstRatio,
             s.burstInterval, s.minLife, s.maxLife);
     }
 

@@ -8,6 +8,8 @@
 #include "ParticleEmitter.h"
 #include "ParticleSettings.h"
 
+#include <memory>
+
 class GraphicsContext;
 namespace Math { class Camera; }
 
@@ -27,7 +29,7 @@ public:
 
 private:
 	void ApplyPending();
-	void CreatePool(Particles::Mode mode, uint32_t maxParticles);
+	void CreatePool(uint32_t maxParticles);
 	void DestroyPool();
 
 	// -----------------------
@@ -44,4 +46,3 @@ private:
 	bool				m_HasPending = false;
 	bool				m_ForceRecreate = false;
 };
-

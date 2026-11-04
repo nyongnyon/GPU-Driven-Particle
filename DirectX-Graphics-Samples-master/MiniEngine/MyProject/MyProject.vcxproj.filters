@@ -48,29 +48,17 @@
     <ClCompile Include="ParticlePool.cpp">
       <Filter>Particle\ParticlePool</Filter>
     </ClCompile>
-    <ClCompile Include="SlotReusePool.cpp">
-      <Filter>Particle\ParticlePool</Filter>
-    </ClCompile>
     <ClCompile Include="ParticleUtility.cpp">
       <Filter>Particle\Util</Filter>
     </ClCompile>
     <ClCompile Include="ParticleEmitter.cpp">
       <Filter>Particle\Emitter</Filter>
     </ClCompile>
-    <ClCompile Include="AliveListPool.cpp">
-      <Filter>Particle\ParticlePool</Filter>
-    </ClCompile>
     <ClCompile Include="ProfileRecorder.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ParticleSettings.cpp">
       <Filter>Particle\ParticleSystem</Filter>
-    </ClCompile>
-    <ClCompile Include="CompactionPool.cpp">
-      <Filter>Particle\ParticlePool</Filter>
-    </ClCompile>
-    <ClCompile Include="FullScanPool.cpp">
-      <Filter>Particle\ParticlePool</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -87,17 +75,11 @@
     <ClInclude Include="ParticlePool.h">
       <Filter>Particle\ParticlePool</Filter>
     </ClInclude>
-    <ClInclude Include="SlotReusePool.h">
-      <Filter>Particle\ParticlePool</Filter>
-    </ClInclude>
     <ClInclude Include="ParticleUtility.h">
       <Filter>Particle\Util</Filter>
     </ClInclude>
     <ClInclude Include="ParticleEmitter.h">
       <Filter>Particle\Emitter</Filter>
-    </ClInclude>
-    <ClInclude Include="AliveListPool.h">
-      <Filter>Particle\ParticlePool</Filter>
     </ClInclude>
     <ClInclude Include="ParticleTypes.h">
       <Filter>Particle</Filter>
@@ -107,12 +89,6 @@
     </ClInclude>
     <ClInclude Include="ParticleSettings.h">
       <Filter>Particle\ParticleSystem</Filter>
-    </ClInclude>
-    <ClInclude Include="CompactionPool.h">
-      <Filter>Particle\ParticlePool</Filter>
-    </ClInclude>
-    <ClInclude Include="FullScanPool.h">
-      <Filter>Particle\ParticlePool</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -137,12 +113,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-    <None Include="Shaders\ParticleSimulateCommon.hlsli">
-      <Filter>Shaders\Particle</Filter>
-    </None>
-    <None Include="Shaders\ParticleDrawReuseCommon.hlsli">
-      <Filter>Shaders\Particle</Filter>
-    </None>
     <None Include="Shaders\ParticleComputeCommon.hlsli">
       <Filter>Shaders\Particle</Filter>
     </None>
@@ -166,28 +136,10 @@
     <FxCompile Include="Shaders\TexturedQuadPS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\ParticleEmitReuseCS.hlsl">
-      <Filter>Shaders\Particle</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleSimulateCS.hlsl">
-      <Filter>Shaders\Particle</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleSimulateFlagsCS.hlsl">
-      <Filter>Shaders\Particle</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleDrawReuseVS.hlsl">
-      <Filter>Shaders\Particle</Filter>
-    </FxCompile>
     <FxCompile Include="Shaders\ParticleDrawPS.hlsl">
       <Filter>Shaders\Particle</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\ParticleDrawReuseFlagsVS.hlsl">
-      <Filter>Shaders\Particle</Filter>
-    </FxCompile>
     <FxCompile Include="Shaders\ParticleEmitAliveCS.hlsl">
-      <Filter>Shaders\Particle</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleSimulateAliveCS.hlsl">
       <Filter>Shaders\Particle</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ParticleAfterSimAliveCS.hlsl">
@@ -200,21 +152,6 @@
       <Filter>Shaders\Particle</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ParticleSimulateAliveWaveCS.hlsl">
-      <Filter>Shaders\Particle</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleSimulateCompactCS.hlsl">
-      <Filter>Shaders\Particle</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleDrawCompactVS.hlsl">
-      <Filter>Shaders\Particle</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleEmitCompactCS.hlsl">
-      <Filter>Shaders\Particle</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleEmitFullScanCS.hlsl">
-      <Filter>Shaders\Particle</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleSimulateFullScanCS.hlsl">
       <Filter>Shaders\Particle</Filter>
     </FxCompile>
   </ItemGroup>

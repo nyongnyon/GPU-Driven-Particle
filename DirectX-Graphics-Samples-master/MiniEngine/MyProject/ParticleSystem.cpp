@@ -2,21 +2,11 @@
 #include "ParticleSystem.h"
 
 #include "GraphicsCore.h"
-#include "GraphicsCommon.h"
-#include "BufferManager.h"
 #include "CommandContext.h"
-#include "RootSignature.h"
-#include "PipelineState.h"
-#include "EngineTuning.h"
-#include "EngineProfiling.h"
 #include "Camera.h"
 
 #include "ParticleUtility.h"
 #include "ParticlePool.h"
-#include "SlotReusePool.h"
-#include "AliveListPool.h"
-#include "FullScanPool.h"
-#include "CompactionPool.h"
 
 #include <algorithm>
 
@@ -28,7 +18,7 @@ using namespace Particles;
 void ParticleSystem::Initialize(const ParticleSettings& settings, const Math::Vector3& emitterPosition)
 {
 	m_Settings = Sanitize(settings);
-	CreatePool(m_Settings.mode, m_Settings.maxParticles);
+	CreatePool(m_Settings.maxParticles);
 
 	m_ParticleEmitter.position = emitterPosition;
 	m_ParticleEmitter.emitParams = BuildEmitterParams(m_Settings);
@@ -67,24 +57,8 @@ void ParticleSystem::ApplySettings(const ParticleSettings& settings, bool forceR
 Particles::ParticleStat ParticleSystem::GetParticleStat()
 {
 	Particles::ParticleStat stat = {};
-	stat.mode = m_ParticlePool->GetMode();
 	stat.maxParticles = m_ParticlePool->GetMaxParticles();
-
-	if (IsDefault(stat.mode))
-	{
-		stat.counters = static_cast<FullScanPool*>(m_ParticlePool.get())->GetCounterSnapshot();
-	}
-
-	else if (IsSlotFamily(stat.mode))
-	{
-		stat.counters = static_cast<SlotReusePool*>(m_ParticlePool.get())->GetCounterSnapshot();
-	}
-
-	else if (IsAliveFamily(stat.mode))
-	{
-		stat.counters = static_cast<AliveListPool*>(m_ParticlePool.get())->GetCounterSnapshot();
-	}
-
+	stat.counters = m_ParticlePool->GetCounterSnapshot();
 	return stat;
 }
 
@@ -96,19 +70,12 @@ void ParticleSystem::ApplyPending()
 	const ParticleSettings& cur = m_Settings;
 	const ParticleSettings& next = m_PendingSettings;
 
-	// 1) Pool : [reset 요청, MAX 변경, 계열 변경] 중 하나라면 새로 만든다
-	const bool recreate = m_ForceRecreate
-		|| next.maxParticles != cur.maxParticles
-		|| !IsSameFamily(next.mode, cur.mode);
-
+	// 1) Pool : [reset 요청, MAX 변경] 중 하나라면 새로 만든다
+	const bool recreate = m_ForceRecreate || next.maxParticles != cur.maxParticles;
 	if (recreate)
 	{
 		DestroyPool();
-		CreatePool(next.mode, next.maxParticles);
-	}
-	else if (next.mode != cur.mode)
-	{
-		m_ParticlePool->SetMode(next.mode);	// 같은 계열: 버퍼는 그대로, 모드만
+		CreatePool(next.maxParticles);
 	}
 
 	// 2) Emitter : 비율 -> 개수 변환 MAX에 따라 달라지므로 항상 다시 계산
@@ -120,15 +87,9 @@ void ParticleSystem::ApplyPending()
 	m_ForceRecreate = false;
 }
 
-void ParticleSystem::CreatePool(Particles::Mode mode, uint32_t maxParticles)
+void ParticleSystem::CreatePool(uint32_t maxParticles)
 {
-	if (IsDefault(mode))
-		m_ParticlePool = std::make_unique<FullScanPool>();
-	else if (IsSlotFamily(mode))
-		m_ParticlePool = std::make_unique<SlotReusePool>(mode);
-	else
-		m_ParticlePool = std::make_unique<AliveListPool>(mode);
-
+	m_ParticlePool = std::make_unique<ParticlePool>();
 	m_ParticlePool->Initialize(maxParticles);
 }
 

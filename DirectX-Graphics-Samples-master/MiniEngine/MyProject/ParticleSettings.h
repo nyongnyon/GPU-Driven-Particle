@@ -8,8 +8,7 @@
 // ImGui에서 바꾸는 측정 조건을 전부 한곳에 모은 것
 struct ParticleSettings
 {
-	// --- Pool: MAX나 계열(Slot <-> Alive)이 바뀌면 버퍼를 새로 만든다 ---
-	Particles::Mode	mode = Particles::Mode::AliveIndirect;
+	// --- Pool: MAX가 바뀌면 버퍼를 새로 만든다 ---
 	uint32_t		maxParticles = 1000000;
 
 	// --- Emit: 바뀌면 Emitter만 다시 설정한다 ---
@@ -31,7 +30,6 @@ namespace Particles
 	ParticleSettings	Sanitize(ParticleSettings s);					// 잘못된 값 정리
 	EmitterParams		BuildEmitterParams(const ParticleSettings& s);	// 비율 -> 실제 개수 (변환은 여기서만)
 
-	const char* ModeName(Mode mode);
 	std::string	SettingsCsvHeader();
 	std::string	SettingsCsvValues(const ParticleSettings& s);
 }

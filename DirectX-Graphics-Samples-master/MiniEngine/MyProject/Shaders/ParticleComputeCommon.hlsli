@@ -22,9 +22,8 @@ cbuffer SimConstants : register(b0)
 RWStructuredBuffer<Particle>    Particles : register(u0);
 RWStructuredBuffer<uint>        DeadList : register(u1);
 RWByteAddressBuffer             Counters : register(u2);
-RWStructuredBuffer<uint>        AliveFlags : register(u3); // For SlotReuseFlags ver / 1 = alive, 0 = dead
-RWStructuredBuffer<uint>        AliveIn : register(u4);
-RWStructuredBuffer<uint>        AliveOut : register(u5);
-RWByteAddressBuffer             IndirectArgs : register(u6); // For Indirect Version, 0~12 : dispatch args, 16~32 : draw args
+RWStructuredBuffer<uint>        AliveIn : register(u3);
+RWStructuredBuffer<uint>        AliveOut : register(u4);
+RWByteAddressBuffer             IndirectArgs : register(u5); // 0~12 : simulate dispatch args, 16~32 : draw args
 
 #endif
