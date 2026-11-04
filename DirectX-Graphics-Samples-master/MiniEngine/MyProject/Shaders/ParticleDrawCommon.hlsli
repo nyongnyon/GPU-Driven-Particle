@@ -1,7 +1,4 @@
 #include "ParticleCommon.hlsli"
-
-StructuredBuffer<Particle> Particles : register(t0);
-
 cbuffer DrawConstants : register(b0)
 {
     float4x4 ViewProj;
@@ -9,13 +6,14 @@ cbuffer DrawConstants : register(b0)
     float4 CamUp;
 };
 
+StructuredBuffer<Particle> Particles : register(t0);
+
+
 struct VSOutput
 {
     float4 position : SV_Position;
     float4 color : COLOR0;
     float2 uv : TEXCOORD0;
-    float viewDepth : TEXCOORD1;
-
 };
 
 static const float2 kCorners[6] =
@@ -23,11 +21,6 @@ static const float2 kCorners[6] =
     float2(-1.f, 1.f), float2(1.f, 1.f), float2(1.f, -1.f),
     float2(-1.f, 1.f), float2(1.f, -1.f), float2(-1.f, -1.f)
 };
-
-float4 ParticleColor(Particle p)
-{
-    return float4(UnpackR11G11B10(p.color), saturate(p.life / max(p.maxlife, 1e-4)));
-}
 
 VSOutput Culled()
 {

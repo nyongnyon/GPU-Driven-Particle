@@ -30,9 +30,6 @@
     <Filter Include="Particle\Emitter">
       <UniqueIdentifier>{1c2093a9-1b54-4860-a89e-ea0bac92f009}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Particle\Renderer">
-      <UniqueIdentifier>{a1efbe82-e5a6-4217-a840-d8bc0abbbf8e}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -45,7 +42,7 @@
     <ClCompile Include="TexturedQuad.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ParticleWorld.cpp">
+    <ClCompile Include="ParticleSystem.cpp">
       <Filter>Particle\ParticleSystem</Filter>
     </ClCompile>
     <ClCompile Include="ParticlePool.cpp">
@@ -63,9 +60,6 @@
     <ClCompile Include="AliveListPool.cpp">
       <Filter>Particle\ParticlePool</Filter>
     </ClCompile>
-    <ClCompile Include="ImageCapture.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="ProfileRecorder.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -78,24 +72,6 @@
     <ClCompile Include="FullScanPool.cpp">
       <Filter>Particle\ParticlePool</Filter>
     </ClCompile>
-    <ClCompile Include="ParticleRenderer.cpp">
-      <Filter>Particle\Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="ParticleDepthSorter.cpp">
-      <Filter>Particle\Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="ParticleMaterial.cpp">
-      <Filter>Particle</Filter>
-    </ClCompile>
-    <ClCompile Include="RenderTechnique.cpp">
-      <Filter>Particle\Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="ParticleTiledRenderer.cpp">
-      <Filter>Particle\Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="ParticleLayeredRenderer.cpp">
-      <Filter>Particle\Renderer</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
@@ -105,7 +81,7 @@
     <ClInclude Include="TexturedQuad.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="ParticleWorld.h">
+    <ClInclude Include="ParticleSystem.h">
       <Filter>Particle\ParticleSystem</Filter>
     </ClInclude>
     <ClInclude Include="ParticlePool.h">
@@ -126,9 +102,6 @@
     <ClInclude Include="ParticleTypes.h">
       <Filter>Particle</Filter>
     </ClInclude>
-    <ClInclude Include="ImageCapture.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="ProfileRecorder.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -140,27 +113,6 @@
     </ClInclude>
     <ClInclude Include="FullScanPool.h">
       <Filter>Particle\ParticlePool</Filter>
-    </ClInclude>
-    <ClInclude Include="ParticleRenderer.h">
-      <Filter>Particle\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="ParticleDepthSorter.h">
-      <Filter>Particle\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="ParticleRenderTypes.h">
-      <Filter>Particle</Filter>
-    </ClInclude>
-    <ClInclude Include="ParticleMaterial.h">
-      <Filter>Particle</Filter>
-    </ClInclude>
-    <ClInclude Include="RenderTechnique.h">
-      <Filter>Particle\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="ParticleTiledRenderer.h">
-      <Filter>Particle\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="ParticleLayeredRenderer.h">
-      <Filter>Particle\Renderer</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -200,18 +152,6 @@
     <None Include="Shaders\ParticleDrawCommon.hlsli">
       <Filter>Shaders\Particle</Filter>
     </None>
-    <None Include="Shaders\ParticleShading.hlsli">
-      <Filter>Shaders\Particle</Filter>
-    </None>
-    <None Include="Shaders\ParticleSortKeyCommon.hlsli">
-      <Filter>Shaders\Particle</Filter>
-    </None>
-    <None Include="Shaders\ParticleTiledCommon.hlsli">
-      <Filter>Shaders\Particle</Filter>
-    </None>
-    <None Include="Shaders\ParticleLayeredCommon.hlsli">
-      <Filter>Shaders\Particle</Filter>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\DebugLineVS.hlsl">
@@ -239,18 +179,6 @@
       <Filter>Shaders\Particle</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ParticleDrawPS.hlsl">
-      <Filter>Shaders\Particle</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleDrawSortedVS.hlsl">
-      <Filter>Shaders\Particle</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleSortKeyAliveCS.hlsl">
-      <Filter>Shaders\Particle</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleSortKeyReuseCS.hlsl">
-      <Filter>Shaders\Particle</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleSortKeyReuseFlagsCS.hlsl">
       <Filter>Shaders\Particle</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ParticleDrawReuseFlagsVS.hlsl">
@@ -287,48 +215,6 @@
       <Filter>Shaders\Particle</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ParticleSimulateFullScanCS.hlsl">
-      <Filter>Shaders\Particle</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleWBOITPS.hlsl">
-      <Filter>Shaders\Particle</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleWBOITCompositePS.hlsl">
-      <Filter>Shaders\Particle</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleWBOITDebugPS.hlsl">
-      <Filter>Shaders\Particle</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleFullscreenVS.hlsl">
-      <Filter>Shaders\Particle</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleTiledRenderCS.hlsl">
-      <Filter>Shaders\Particle</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleTiledCompositePS.hlsl">
-      <Filter>Shaders\Particle</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleTiledPrepCS.hlsl">
-      <Filter>Shaders\Particle</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleLayeredClearCS.hlsl">
-      <Filter>Shaders\Particle</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleLayeredPrepCS.hlsl">
-      <Filter>Shaders\Particle</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleLayeredCountCS.hlsl">
-      <Filter>Shaders\Particle</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleLayeredScanCS.hlsl">
-      <Filter>Shaders\Particle</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleLayeredWriteCS.hlsl">
-      <Filter>Shaders\Particle</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleLayeredRenderCS.hlsl">
-      <Filter>Shaders\Particle</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\ParticleTiledCullOnly.hlsl">
       <Filter>Shaders\Particle</Filter>
     </FxCompile>
   </ItemGroup>

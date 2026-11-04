@@ -27,10 +27,10 @@ void main( uint3 DTid : SV_DispatchThreadID )
     p.velocity = RandDirection(rng) * lerp(MinSpeed, MaxSpeed, Rand01(rng));
     p.life = lerp(MinLife, MaxLife, Rand01(rng));
     p.maxlife = p.life;
-    p.color = PackR11G11B10(RandomColor(rng));;
+    p.color = BaseColor;
     p.size = ParticleSize;
     p.flags = PARTICLE_FLAG_ALIVE;
-    p.emitterId = EmitterId;
+    p.pad = 0;
     Particles[slot] = p;
 
     uint prevEmit;

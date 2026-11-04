@@ -18,24 +18,10 @@
 #include "TexturedQuad.h"
 #include "ImGuiLayer.h"
 
-#include "ParticleWorld.h"
+#include "ParticleSystem.h"
 #include "ParticleUtility.h"
 
 #include "ProfileRecorder.h"
-#include "ImageCapture.h"
-
-#include "Model.h"
-#include "ModelLoader.h"
-#include "ShadowCamera.h"
-#include "SSAO.h"
-#include "TemporalEffects.h"
-#include "TextureManager.h"
-
-using Renderer::MeshSorter;
-
-#include <fstream>
-
-namespace GameCore { extern HWND g_hWnd; }
 
 using namespace GameCore;
 using namespace Graphics;
@@ -51,75 +37,39 @@ public:
 
     }
 
-    virtual void Startup(void) override;
-    virtual void Cleanup(void) override;
+    virtual void Startup( void ) override;
+    virtual void Cleanup( void ) override;
 
-    virtual void Update(float deltaT) override;
-    virtual void RenderScene(void) override;
+    virtual void Update( float deltaT ) override;
+    virtual void RenderScene( void ) override;
 
     virtual bool RequiresImGui() const override { return true; }
 
 private:
-    void UpdateImGui(float deltaT);
-    void SetCameraPreset(float distance);
-
-    // 이미터 수 / 간격 / 색 구분을 ParticleWorld에 맞춘다 (X축 위에 일렬, 가운데 = 원점)
-    void SyncEmitters(void);
-
-    // Main window position is kept between runs (size stays default = same back buffer resolution)
-    void RestoreWindowPos(void);
-    void TrackWindowPos(void);
-    void SaveWindowPos(void);
-
-    // PNG captures, done after UpdateImGui (before RenderScene) = the frame on screen now
-    void ProcessCaptures(void);
+    void UpdateImGui( float deltaT );
 
     bool m_ShowImGuiDemo = false;
 
     Camera m_Camera;
     std::unique_ptr<CameraController> m_CameraController;
 
-    ParticleWorld           m_Particles;
+    ParticleSystem          m_Particles;
     ParticleSettings        m_Draft;
-
-    std::vector<EmitterHandle> m_Emitters;
-    int                     m_EmitterCount = 1;
-    float                   m_EmitterSpacing = 3.f;
-    bool                    m_ColorByEmitter = false;     // 이미터마다 다른 색 : 이미터 사이 소팅 확인용
     bool                    m_FixedDt = true;
-    bool                    m_Paused = false;     // time stop: simulate with dt = 0
-    bool                    m_ShowWBOITTargets = false;
 
     ProfileRecorder m_Recorder;
     int  m_RecordFrames = 1000;
     char m_RecordTag[32] = "Tag your Own Name";
     bool m_LastSaveOk = true;
-
-    POINT m_WindowPos = {};
-    bool  m_HasWindowPos = false;
-
-    enum CaptureBits : uint32_t { kCaptureScreen = 1u << 0, kCaptureWBOIT = 1u << 1 };   // WBOIT view i = kCaptureWBOIT << i
-    uint32_t    m_CaptureRequest = 0;
-    std::string m_LastCaptureMsg;
-
-
-    // -------------------------
-    //          Sponza
-    // -------------------------
-    ModelInstance m_Sponza;
-    ShadowCamera  m_SunShadowCamera;
-
 };
 
-CREATE_APPLICATION(MyProject)
+CREATE_APPLICATION( MyProject )
 
-void MyProject::Startup(void)
+void MyProject::Startup( void )
 {
     // Rendering Setting
     //g_SceneColorBuffer.SetClearColor(Color(0.5f, 0.5f, 0.4f));
     PostEffects::EnableAdaptation = false;
-    SSAO::Enable = false;
-    RestoreWindowPos();
 
     Renderer::Initialize();
     DebugDraw::Initialize();
@@ -128,55 +78,31 @@ void MyProject::Startup(void)
     // Camera Setting
     m_Camera.SetZRange(0.1f, 1000.f);
     m_Camera.SetEyeAtUp(Vector3(0.f, 5.f, -15.f), Vector3(0.f, 0.f, 0.f), Vector3(Math::kYUnitVector));
-
+    
     auto NewCam = new FlyingFPSCamera(m_Camera, Vector3(Math::kYUnitVector));
     NewCam->SetMoveSpeed(10.f);
     NewCam->SetStrafeSpeed(10.f);
     m_CameraController.reset(NewCam);
 
     // Setup your data
-    m_Draft.mode = Particles::Mode::AliveIndirect;
-    m_Draft.maxParticles = 100'000;
+    m_Draft.mode = Particles::Mode::Default;
+    m_Draft.maxParticles = 1'000'000;
     m_Draft.steadyRatio = 0.5f;
-    m_Draft.technique = Particles::ParticleTechnique::TiledAlpha;
-    //m_Draft.technique = Particles::ParticleTechnique::WeightedOIT;
-    m_Particles.Initialize(m_Draft);
-    SyncEmitters();
+    m_Particles.Initialize(m_Draft, Vector3(0.f, 0.f, 0.f));
 
-    // (선택) 스프라이트 텍스처. 경로는 TexturedQuad::Load에 넘기는 것과 같은 기준
-    m_Particles.GetMaterial().LoadAlbedo(L"Assets/Textures/image1.png");
-
+    // Setup Profile Recorder
     m_Recorder.SetTimers({
-    L"Particle Update",
+    L"Particle Update",     // 컴퓨트 전체
     L"Particle Emit",
-    L"Particle ArgsPre",
+    L"Particle ArgsPre",    // Indirect만 있음
     L"Particle Simulate",
-    L"Particle AfterSim",
-    L"Particle Sort",
-    L"Particle KeyGen",          // TiledLayeredWBOIT : 정렬 없이 compact만
-    L"Particle Tiled Prep",
-    L"Particle Tiled",
-    L"Particle Layered Bin",     // slice counting sort (Clear/Prep/Count/Scan/Write)
-    L"Particle Layered Render",  // 타일별 slice WBOIT + under + 조기 종료
-    L"Particle Draw",
-    L"Particle Composite" });   // WBOIT / Tiled 계열
-
-    TextureRef diffIBL = TextureManager::LoadDDSFromFile(L"../ModelViewer/Textures/Atrium_diffuseIBL.dds");
-    TextureRef specIBL = TextureManager::LoadDDSFromFile(L"../ModelViewer/Textures/Atrium_specularIBL.dds");
-    Renderer::SetIBLTextures(diffIBL, specIBL);
-
-    m_Sponza = Renderer::LoadModel(L"../ModelViewer/Sponza/pbr/sponza2.gltf", false);
-    m_Sponza.Resize(50.0f);
-
+    L"Particle AfterSim",   // Alive 계열만 있음
+    L"Particle Draw" });
 }
 
-void MyProject::Cleanup(void)
+void MyProject::Cleanup( void )
 {
-    SaveWindowPos();
-
     // Free up resources in an orderly fashion
-    m_Sponza = nullptr;
-
     m_Particles.Shutdown();
 
     m_CameraController.reset();
@@ -186,11 +112,9 @@ void MyProject::Cleanup(void)
     Renderer::Shutdown();
 }
 
-void MyProject::Update(float deltaT)
+void MyProject::Update( float deltaT )
 {
     ScopedTimer _prof(L"Update State");
-
-    TrackWindowPos();
 
     // Update something
     m_CameraController->Update(deltaT);
@@ -199,30 +123,20 @@ void MyProject::Update(float deltaT)
     //DebugDraw::AddLine(Vector3(-1.f, 0.f, 0.f), Vector3(1.f, 0.f, 0.f), Color(1.f, 1.f, 1.f));
 
 
-    // Paused: every pass still runs, but nothing moves, ages or emits
-    const float simDt = m_Paused ? 0.f : (m_FixedDt ? 1.0f / 60.f : deltaT);
-    m_Particles.Update(simDt);
+    m_Particles.Update(m_FixedDt ? 1.0f / 60.f : deltaT);
 
     const Particles::ParticleStat stat = m_Particles.GetParticleStat();
     if (m_Recorder.Tick(stat.counters.aliveCount))
     {
-        const bool useTex = (m_Particles.GetMaterial().constants.features & Particles::kFeatureTexture) != 0;
-        m_LastSaveOk = m_Recorder.AppendCSV("ParticleProfile_v6.csv",   // v6 : emitters 열 추가 (v5와 열 구성이 다름)
-            Particles::SettingsCsvHeader() + ",texture,emitters",
-            Particles::SettingsCsvValues(m_Particles.GetSettings()) + (useTex ? ",1" : ",0")
-                + "," + std::to_string(m_Particles.GetActiveEmitterCount()),
+        m_LastSaveOk = m_Recorder.AppendCSV("ParticleProfile_v2.csv",
+            Particles::SettingsCsvHeader(), Particles::SettingsCsvValues(m_Particles.GetSettings()),
             m_RecordTag, stat.maxParticles);
     }
 
     UpdateImGui(deltaT);
-    ProcessCaptures();
-
-    GraphicsContext& gfx = GraphicsContext::Begin(L"Scene Update");
-    //m_Sponza.Update(gfx, deltaT);
-    gfx.Finish();
 }
 
-void MyProject::UpdateImGui(float deltaT)
+void MyProject::UpdateImGui( float deltaT )
 {
     ImGui::SetNextWindowPos(ImVec2(10.f, 10.f), ImGuiCond_FirstUseEver);
     ImGui::Begin("Debug");
@@ -230,34 +144,6 @@ void MyProject::UpdateImGui(float deltaT)
     ImGui::Text("Mode: %s  [F1 to toggle]", ImGuiLayer::IsCameraMode() ? "Camera" : "UI");
     ImGui::Checkbox("Fixed dt (1/60 s)", &m_FixedDt);
     ImGui::Checkbox("Show ImGui Demo", &m_ShowImGuiDemo);
-
-    // Time stop (disabled while recording so a record never mixes both states)
-    ImGui::BeginDisabled(m_Recorder.IsBusy());
-    if (ImGui::Button(m_Paused ? "Play###PlayStop" : "Stop###PlayStop"))
-        m_Paused = !m_Paused;
-    ImGui::EndDisabled();
-    ImGui::SameLine();
-    if (m_Paused)
-        ImGui::TextColored(ImVec4(1.f, 0.6f, 0.2f, 1.f), "STOPPED (dt = 0)");
-    else
-        ImGui::Text("Playing");
-
-    // Camera presets: same direction as the start position, only the distance changes
-    ImGui::BeginDisabled(m_Recorder.IsBusy());
-    if (ImGui::Button("Near")) SetCameraPreset(5.f);
-    ImGui::SameLine();
-    if (ImGui::Button("Mid")) SetCameraPreset(15.8f);
-    ImGui::SameLine();
-    if (ImGui::Button("Far")) SetCameraPreset(40.f);
-    ImGui::EndDisabled();
-
-    // Capture (PNG in Captures/). Waits for the GPU (one hitch), so not while recording
-    ImGui::BeginDisabled(m_Recorder.IsBusy());
-    if (ImGui::Button("Save screen"))
-        m_CaptureRequest |= kCaptureScreen;
-    ImGui::EndDisabled();
-    if (!m_LastCaptureMsg.empty())
-        ImGui::TextDisabled("%s", m_LastCaptureMsg.c_str());
     ImGui::End();
 
     ImGui::Begin("Particle");
@@ -280,57 +166,6 @@ void MyProject::UpdateImGui(float deltaT)
         offset = (offset + 1) % IM_ARRAYSIZE(history);
         ImGui::PlotLines("##alive", history, IM_ARRAYSIZE(history), offset,
             "alive", 0.f, float(stat.maxParticles), ImVec2(0.f, 60.f));
-    }
-
-    {
-        // 이미터는 Apply 없이 즉시 반영. 모두 풀 하나를 같이 쓰고, steady / burst 비율을 이미터 수로 나눠 가진다
-        ImGui::SeparatorText("Emitters (shared pool)");
-        ImGui::BeginDisabled(m_Recorder.IsBusy());
-        bool changed = ImGui::SliderInt("Count", &m_EmitterCount, 1, 16);
-        changed |= ImGui::SliderFloat("Spacing", &m_EmitterSpacing, 0.f, 10.f, "%.1f");
-        changed |= ImGui::Checkbox("Color by emitter", &m_ColorByEmitter);
-        ImGui::EndDisabled();
-        if (changed)
-            SyncEmitters();
-        ImGui::Text("Active : %u", m_Particles.GetActiveEmitterCount());
-
-        // 이미터별 기법 (강제 모드가 꺼져 있을 때만 쓰인다)
-        const bool forced = m_Particles.GetSettings().forceTechnique;
-        if (forced)
-            ImGui::TextDisabled("technique forced : %s (turn off Force in Render)",
-                Particles::TechniqueName(m_Particles.GetSettings().technique));
-
-        static const Particles::ParticleTechnique kEmitterTechs[] =
-        {
-            Particles::ParticleTechnique::Additive, Particles::ParticleTechnique::PremultipliedAlpha,
-            Particles::ParticleTechnique::SortedAlpha, Particles::ParticleTechnique::TiledAlpha,
-        };
-        static const char* kEmitterTechLabels[] = { "Additive", "Premultiplied", "Sorted Alpha", "Tiled Alpha" };
-
-        uint32_t occluding = 0;     // 가리는(Alpha 계열) 기법이 몇 종류 쓰이는가
-        bool usedTech[IM_ARRAYSIZE(kEmitterTechs)] = {};
-
-        ImGui::BeginDisabled(forced || m_Recorder.IsBusy());
-        for (uint32_t i = 0; i < (uint32_t)m_Emitters.size(); ++i)
-        {
-            const Particles::ParticleTechnique cur = m_Particles.GetEmitterTechnique(m_Emitters[i]);
-            int index = 0;
-            for (int k = 0; k < IM_ARRAYSIZE(kEmitterTechs); ++k)
-                if (kEmitterTechs[k] == cur)
-                    index = k;
-
-            char label[32];
-            snprintf(label, sizeof(label), "Emitter %u", i);
-            if (ImGui::Combo(label, &index, kEmitterTechLabels, IM_ARRAYSIZE(kEmitterTechLabels)))
-                m_Particles.SetEmitterTechnique(m_Emitters[i], kEmitterTechs[index]);
-            usedTech[index] = true;
-        }
-        ImGui::EndDisabled();
-
-        for (int k = 1; k < IM_ARRAYSIZE(kEmitterTechs); ++k)      // 0 = Additive : 순서와 무관
-            occluding += usedTech[k] ? 1u : 0u;
-        if (!forced && occluding >= 2)
-            ImGui::TextColored(ImVec4(1.f, 0.6f, 0.2f, 1.f), "different alpha techniques : overlaps between them are not sorted");
     }
 
     {
@@ -365,78 +200,6 @@ void MyProject::UpdateImGui(float deltaT)
         ImGui::SliderFloat("Burst interval (s)", &m_Draft.burstInterval, 0.5f, 5.f, "%.1f");
         ImGui::SliderFloat("Life min (s)", &m_Draft.minLife, 0.1f, 5.f, "%.1f");
         ImGui::SliderFloat("Life max (s)", &m_Draft.maxLife, 0.1f, 5.f, "%.1f");
-        ImGui::SliderFloat("Size", &m_Draft.particleSize, 0.005f, 1.f, "%.3f", ImGuiSliderFlags_Logarithmic);
-
-        // Color (Apply 후 새로 생기는 파티클부터 반영)
-        ImGui::SeparatorText("Color");
-        int colorMode = (int)m_Draft.colorMode;
-        ImGui::RadioButton("Fixed", &colorMode, (int)Particles::ColorMode::Fixed); ImGui::SameLine();
-        ImGui::RadioButton("Range", &colorMode, (int)Particles::ColorMode::Range); ImGui::SameLine();
-        ImGui::RadioButton("Random Hue", &colorMode, (int)Particles::ColorMode::RandomHue);
-        m_Draft.colorMode = (Particles::ColorMode)colorMode;
-
-        if (m_Draft.colorMode != Particles::ColorMode::RandomHue)
-            ImGui::ColorEdit3(m_Draft.colorMode == Particles::ColorMode::Range ? "Color A" : "Color", &m_Draft.colorA.x);
-        if (m_Draft.colorMode == Particles::ColorMode::Range)
-            ImGui::ColorEdit3("Color B", &m_Draft.colorB.x);
-
-        // 1 초과 = HDR (Bloom 문턱 4.0 / 노출 2.0 기준, 2 이상이면 빛나기 시작)
-        ImGui::SliderFloat("Intensity", &m_Draft.colorIntensity, 0.f, Particles::kMaxColorIntensity, "%.2f",
-            ImGuiSliderFlags_Logarithmic);
-
-        // Render : 강제 = 모든 이미터를 아래 기법 하나로 (측정용). 끄면 이미터마다 (Emitters 섹션)
-        ImGui::SeparatorText("Render");
-        ImGui::Checkbox("Force one technique (for measurement)", &m_Draft.forceTechnique);
-
-        ImGui::BeginDisabled(!m_Draft.forceTechnique);
-        int tech = (int)m_Draft.technique;
-        ImGui::RadioButton("Additive", &tech, (int)Particles::ParticleTechnique::Additive); ImGui::SameLine();
-        ImGui::RadioButton("Premultiplied", &tech, (int)Particles::ParticleTechnique::PremultipliedAlpha); ImGui::SameLine();
-        ImGui::RadioButton("Sorted Alpha", &tech, (int)Particles::ParticleTechnique::SortedAlpha);
-        ImGui::RadioButton("Tiled Alpha", &tech, (int)Particles::ParticleTechnique::TiledAlpha);
-        // 레거시 : 이미터별 선택에는 없고, 강제 모드에서만 돌려 볼 수 있다
-        ImGui::TextDisabled("legacy (forced only)");
-        ImGui::RadioButton("WBOIT", &tech, (int)Particles::ParticleTechnique::WeightedOIT); ImGui::SameLine();
-        ImGui::RadioButton("Tiled Layered WBOIT", &tech, (int)Particles::ParticleTechnique::TiledLayeredWBOIT);
-        ImGui::EndDisabled();
-
-        m_Draft.technique = (Particles::ParticleTechnique)tech;
-
-        // Layered WBOIT : slice 수가 정확도(정렬에 가까움)와 비용 사이의 다이얼
-        if (m_Draft.forceTechnique && m_Draft.technique == Particles::ParticleTechnique::TiledLayeredWBOIT)
-        {
-            int slices = (int)m_Draft.layeredSlices;
-            if (ImGui::SliderInt("Slices", &slices, 1, 64))
-                m_Draft.layeredSlices = (uint32_t)slices;
-            int sliceMode = (int)m_Draft.layeredSliceMode;
-            ImGui::RadioButton("Linear slices", &sliceMode, 0); ImGui::SameLine();
-            ImGui::RadioButton("Log slices", &sliceMode, 1);
-            m_Draft.layeredSliceMode = (uint32_t)sliceMode;
-        }
-
-        // WBOIT는 깊이 테스트를 항상 켜므로 체크박스를 잠근다
-        const bool depthForced = (m_Draft.technique == Particles::ParticleTechnique::WeightedOIT);
-        ImGui::BeginDisabled(depthForced);
-        ImGui::EndDisabled();
-
-        // 텍스처는 Apply 없이 즉시 반영 (CSV 조건에는 안 들어감)
-        ParticleMaterial& mat = m_Particles.GetMaterial();
-        bool useTex = (mat.constants.features & Particles::kFeatureTexture) != 0;
-        ImGui::BeginDisabled(!mat.albedo.IsValid());
-        if (ImGui::Checkbox("Texture", &useTex))
-        {
-            if (useTex) mat.constants.features |= Particles::kFeatureTexture;
-            else        mat.constants.features &= ~(uint32_t)Particles::kFeatureTexture;
-        }
-        ImGui::EndDisabled();
-
-        // 조기 종료 확인용 히트맵 (Apply 없이 즉시 반영) : 파랑 = 앞쪽 slice 몇 장만 보고 끝, 빨강 = 끝까지 다 봄
-        if (m_Particles.GetSettings().forceTechnique && m_Particles.GetSettings().technique == Particles::ParticleTechnique::TiledLayeredWBOIT)
-            ImGui::Checkbox("Slice heatmap (early-out)", &m_Particles.GetRenderer().LayeredOptions().debugView);
-
-        // WBOIT render targets in a separate window (the extra pass is skipped while recording)
-        if (m_Particles.GetSettings().forceTechnique && m_Particles.GetSettings().technique == Particles::ParticleTechnique::WeightedOIT)
-            ImGui::Checkbox("Show WBOIT targets", &m_ShowWBOITTargets);
 
         // 측정 조건이 의도와 달라지는 경우 경고
         if (m_Draft.steadyRatio + m_Draft.burstRatio > 1.f)
@@ -464,9 +227,9 @@ void MyProject::UpdateImGui(float deltaT)
         ImGui::EndDisabled();
 
         const ParticleSettings& s = m_Particles.GetSettings();
-        ImGui::TextDisabled("applied: %s, %u, steady %.2f, burst %.2f / %.1fs, life %.1f~%.1f, %s, size %.3f",
+        ImGui::TextDisabled("applied: %s, %u, steady %.2f, burst %.2f / %.1fs, life %.1f~%.1f",
             Particles::ModeName(s.mode), s.maxParticles, s.steadyRatio, s.burstRatio,
-            s.burstInterval, s.minLife, s.maxLife, Particles::TechniqueName(s.technique), s.particleSize);
+            s.burstInterval, s.minLife, s.maxLife);
     }
 
     {
@@ -499,269 +262,31 @@ void MyProject::UpdateImGui(float deltaT)
 
     ImGui::End();
 
-    {
-        WBOITTechnique& wboit = m_Particles.GetRenderer().WBOIT();
-        const bool wboitApplied = m_Particles.GetSettings().forceTechnique
-            && (m_Particles.GetSettings().technique == Particles::ParticleTechnique::WeightedOIT);
-        const bool showTargets = m_ShowWBOITTargets && wboitApplied;
-        wboit.GetDebugOptions().enabled = showTargets && !m_Recorder.IsBusy();
-
-        if (showTargets)
-        {
-            ImGui::SetNextWindowSize(ImVec2(360.f, 760.f), ImGuiCond_FirstUseEver);
-            if (ImGui::Begin("WBOIT Targets", &m_ShowWBOITTargets))
-            {
-                ImGui::SliderFloat("Weight range", &wboit.GetDebugOptions().weightRange, 1.f, 100000.f, "%.0f",
-                    ImGuiSliderFlags_Logarithmic);
-                if (m_Recorder.IsBusy())
-                    ImGui::TextDisabled("(frozen while recording)");
-
-                // Save all = screen + every view with the same time stamp
-                const bool canSave = !m_Recorder.IsBusy() && wboit.GetDebugTexture(0) != ImTextureID_Invalid;
-                ImGui::BeginDisabled(!canSave);
-                if (ImGui::Button("Save all"))
-                {
-                    m_CaptureRequest |= kCaptureScreen;
-                    for (uint32_t i = 0; i < WBOITTechnique::kNumDebugViews; ++i)
-                        m_CaptureRequest |= kCaptureWBOIT << i;
-                }
-                ImGui::EndDisabled();
-
-                const float width = ImGui::GetContentRegionAvail().x;
-                const float aspect = wboit.GetDebugWidth() > 0
-                    ? float(wboit.GetDebugHeight()) / float(wboit.GetDebugWidth()) : 0.f;
-                for (uint32_t i = 0; i < WBOITTechnique::kNumDebugViews; ++i)
-                {
-                    ImGui::SeparatorText(WBOITTechnique::DebugViewName(i));
-                    ImGui::PushID(int(i));
-                    ImGui::BeginDisabled(!canSave);
-                    if (ImGui::SmallButton("Save"))
-                        m_CaptureRequest |= kCaptureWBOIT << i;
-                    ImGui::EndDisabled();
-                    ImGui::PopID();
-                    const ImTextureID tex = wboit.GetDebugTexture(i);
-                    if (tex == ImTextureID_Invalid)
-                        ImGui::TextDisabled("(not drawn yet)");
-                    else
-                        ImGui::Image(tex, ImVec2(width, width * aspect));
-                }
-            }
-            ImGui::End();
-        }
-    }
 
     if (m_ShowImGuiDemo)
         ImGui::ShowDemoWindow(&m_ShowImGuiDemo);
 }
 
-void MyProject::ProcessCaptures(void)
-{
-    if (m_CaptureRequest == 0)
-        return;
-
-    static const char* kViewFileNames[WBOITTechnique::kNumDebugViews] = { "wboit_color", "wboit_weight", "wboit_reveal" };
-
-    const std::string stamp = ImageCapture::MakeStamp();
-    int saved = 0, failed = 0;
-    std::string lastPath;
-    auto save = [&](ColorBuffer& buffer, const char* name, bool srgbEncode, D3D12_RESOURCE_STATES restoreState)
-    {
-        const std::string path = ImageCapture::MakePath(stamp, name);
-        if (ImageCapture::SavePng(buffer, path, srgbEncode, restoreState))
-        {
-            ++saved;
-            lastPath = path;
-        }
-        else
-            ++failed;
-    };
-
-    // Scene color after PostEffects is linear LDR; the screen shows it with the sRGB curve (no UI in the capture).
-    // RenderScene transitions it back to RENDER_TARGET, so leave it as COPY_SOURCE.
-    if (m_CaptureRequest & kCaptureScreen)
-        save(g_SceneColorBuffer, "screen", true, D3D12_RESOURCE_STATE_COPY_SOURCE);
-
-    // WBOIT views are already display values (as shown in ImGui); ImGui samples them, so back to PIXEL_SHADER_RESOURCE
-    WBOITTechnique& wboit = m_Particles.GetRenderer().WBOIT();
-    for (uint32_t i = 0; i < WBOITTechnique::kNumDebugViews; ++i)
-    {
-        if ((m_CaptureRequest & (kCaptureWBOIT << i)) && wboit.GetDebugTexture(i) != ImTextureID_Invalid)
-            save(wboit.GetDebugTarget(i), kViewFileNames[i], false, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-    }
-
-    m_CaptureRequest = 0;
-
-    char msg[256];
-    if (failed == 0)
-        snprintf(msg, sizeof(msg), "saved %d : %s", saved, lastPath.c_str());
-    else
-        snprintf(msg, sizeof(msg), "saved %d, FAILED %d (see Captures/)", saved, failed);
-    m_LastCaptureMsg = msg;
-}
-
-void MyProject::SyncEmitters(void)
-{
-    const uint32_t count = (uint32_t)(m_EmitterCount < 1 ? 1 : m_EmitterCount);
-
-    while (m_Emitters.size() > count)
-    {
-        m_Particles.DestroyEmitter(m_Emitters.back());
-        m_Emitters.pop_back();
-    }
-    while (m_Emitters.size() < count)
-    {
-        const EmitterHandle handle = m_Particles.CreateEmitter(Vector3(0.f, 0.f, 0.f));
-        if (!handle.IsValid())
-            break;
-        m_Emitters.push_back(handle);
-    }
-
-    const uint32_t n = (uint32_t)m_Emitters.size();
-    for (uint32_t i = 0; i < n; ++i)
-    {
-        ParticleEmitter* emitter = m_Particles.GetEmitter(m_Emitters[i]);
-        if (emitter == nullptr)
-            continue;
-
-        emitter->position = Vector3((float(i) - 0.5f * float(n - 1)) * m_EmitterSpacing, 0.f, 0.f);
-
-        // hue를 이미터 수로 나눠 서로 다른 색 (HueToRGB와 같은 식)
-        const float h = float(i) / float(n);
-        auto channel = [h](float offset)
-        {
-            float x = h + offset;
-            x = (x - floorf(x)) * 6.f - 3.f;
-            const float v = fabsf(x) - 1.f;
-            return v < 0.f ? 0.f : (v > 1.f ? 1.f : v);
-        };
-        m_Particles.SetEmitterColor(m_Emitters[i], m_ColorByEmitter,
-            DirectX::XMFLOAT3(channel(0.f), channel(2.f / 3.f), channel(1.f / 3.f)));
-    }
-}
-
-void MyProject::SetCameraPreset(float distance)
-{
-    const Vector3 eye = Normalize(Vector3(0.f, 5.f, -15.f)) * distance;
-    m_Camera.SetEyeAtUp(eye, Vector3(0.f, 0.f, 0.f), Vector3(Math::kYUnitVector));
-    m_Camera.Update();
-
-    // FlyingFPSCamera keeps its own heading/pitch, so rebuild it from the new camera direction
-    auto NewCam = new FlyingFPSCamera(m_Camera, Vector3(Math::kYUnitVector));
-    NewCam->SetMoveSpeed(10.f);
-    NewCam->SetStrafeSpeed(10.f);
-    m_CameraController.reset(NewCam);
-}
-
-namespace
-{
-    const char* kWindowPosFile = "WindowPos.ini";   // next to imgui.ini (working directory)
-}
-
-void MyProject::RestoreWindowPos(void)
-{
-    int x = 0, y = 0;
-    std::ifstream file(kWindowPosFile);
-    if (!(file >> x >> y))
-        return;
-
-    // Skip if the title bar would land off every monitor (monitor setup changed)
-    const POINT titleBar = { x + 60, y + 10 };
-    if (MonitorFromPoint(titleBar, MONITOR_DEFAULTTONULL) == nullptr)
-        return;
-
-    SetWindowPos(g_hWnd, nullptr, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
-}
-
-void MyProject::TrackWindowPos(void)
-{
-    // Closing with the X button destroys the window before Cleanup, so keep the last position here.
-    // Minimized / maximized positions are not kept.
-    if (IsIconic(g_hWnd) || IsZoomed(g_hWnd))
-        return;
-
-    RECT rc;
-    if (GetWindowRect(g_hWnd, &rc))
-    {
-        m_WindowPos = { rc.left, rc.top };
-        m_HasWindowPos = true;
-    }
-}
-
-void MyProject::SaveWindowPos(void)
-{
-    if (!m_HasWindowPos)
-        return;
-
-    std::ofstream file(kWindowPosFile);
-    file << m_WindowPos.x << ' ' << m_WindowPos.y << '\n';
-}
-
-void MyProject::RenderScene(void)
+void MyProject::RenderScene( void )
 {
     GraphicsContext& gfxContext = GraphicsContext::Begin(L"Scene Render");
 
-    D3D12_VIEWPORT vp = { 0, 0, (float)g_SceneColorBuffer.GetWidth(), (float)g_SceneColorBuffer.GetHeight(), 0, 1 };
-    D3D12_RECT     sc = { 0, 0, (LONG)g_SceneColorBuffer.GetWidth(), (LONG)g_SceneColorBuffer.GetHeight() };
-
-    // 조명/그림자 상수
-    const float ori = -0.5f, inc = 0.75f;
-    Vector3 sunDir = Normalize(Vector3(cosf(ori) * cosf(inc * 1.5708f), sinf(inc * 1.5708f),
-        sinf(ori) * cosf(inc * 1.5708f)));    m_SunShadowCamera.UpdateMatrix(-sunDir, m_Sponza.GetCenter(), Vector3(m_Sponza.GetRadius() * 2.f),
-        (uint32_t)g_ShadowBuffer.GetWidth(), (uint32_t)g_ShadowBuffer.GetHeight(), 16);
-
-    GlobalConstants globals;
-    globals.ViewProjMatrix = m_Camera.GetViewProjMatrix();
-    globals.SunShadowMatrix = m_SunShadowCamera.GetShadowMatrix();
-    globals.CameraPos = m_Camera.GetPosition();
-    globals.SunDirection = sunDir;
-    globals.SunIntensity = Vector3(4.0f);
-
-    // ① 깊이 프리패스
+    gfxContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
     gfxContext.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
+
+    gfxContext.ClearColor(g_SceneColorBuffer);
     gfxContext.ClearDepth(g_SceneDepthBuffer);
 
-    MeshSorter sorter(MeshSorter::kDefault);
-    sorter.SetCamera(m_Camera);
-    sorter.SetViewport(vp);
-    sorter.SetScissor(sc);
-    sorter.SetDepthStencilTarget(g_SceneDepthBuffer);
-    sorter.AddRenderTarget(g_SceneColorBuffer);
-    //m_Sponza.Render(sorter);
-    sorter.Sort();
-    sorter.RenderMeshes(MeshSorter::kZPass, gfxContext, globals);
-
-    // ② AO 버퍼를 흰색으로 클리어 + g_LinearDepth 생성 (Enable=false 경로)
-    SSAO::Render(gfxContext, m_Camera);
-    // ← 여기서 깊이 다운샘플 CS를 돌리면 됨 (입력: g_LinearDepth[TemporalEffects::GetFrameIndexMod2()])
-
-    // ③ 그림자 맵
-    {
-        MeshSorter shadowSorter(MeshSorter::kShadows);
-        shadowSorter.SetCamera(m_SunShadowCamera);
-        shadowSorter.SetDepthStencilTarget(g_ShadowBuffer);
-        m_Sponza.Render(shadowSorter);
-        shadowSorter.Sort();
-        shadowSorter.RenderMeshes(MeshSorter::kZPass, gfxContext, globals);
-    }
-
-    // ④ 불투명 컬러 패스
-    gfxContext.TransitionResource(g_SceneColorBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
-    gfxContext.ClearColor(g_SceneColorBuffer);
-    gfxContext.TransitionResource(g_SSAOFullScreen, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-    gfxContext.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_READ, true);
-    gfxContext.SetRenderTarget(g_SceneColorBuffer.GetRTV(), g_SceneDepthBuffer.GetDSV_DepthReadOnly());
-    gfxContext.SetViewportAndScissor(vp, sc);
-    sorter.RenderMeshes(MeshSorter::kOpaque, gfxContext, globals);
-    //Renderer::DrawSkybox(gfxContext, m_Camera, vp, sc);
-    sorter.RenderMeshes(MeshSorter::kTransparent, gfxContext, globals);
-
-    // ⑤ 기존 내용 (디버그 + 파티클)
-    gfxContext.TransitionResource(g_SceneDepthBuffer, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
     gfxContext.SetRenderTarget(g_SceneColorBuffer.GetRTV(), g_SceneDepthBuffer.GetDSV());
-    gfxContext.SetViewportAndScissor(vp, sc);
+    gfxContext.SetViewportAndScissor(0, 0, g_SceneColorBuffer.GetWidth(), g_SceneColorBuffer.GetHeight());
+
+    // Rendering something
     DebugDraw::Render(gfxContext, m_Camera.GetViewProjMatrix());
     QuadRenderer::BeginDraw(gfxContext, m_Camera.GetViewProjMatrix());
-    m_Particles.Render(gfxContext, m_Camera);
 
+    m_Particles.Render(gfxContext, m_Camera);
+   
+
+    // Finish
     gfxContext.Finish();
 }

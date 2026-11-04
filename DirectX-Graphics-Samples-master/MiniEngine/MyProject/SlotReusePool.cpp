@@ -57,11 +57,11 @@ namespace
 		s_ComputeSig[kComputeUAVs].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 4);
 		s_ComputeSig.Finalize(L"Particle Slot Reuse Compute RootSig");
 
-		//// 2) Draw Root Sig
-		//s_DrawSig.Reset(kNumDrawRootParams, 0);
-		//s_DrawSig[kDrawCBVs].InitAsConstantBuffer(0, D3D12_SHADER_VISIBILITY_VERTEX);
-		//s_DrawSig[kDrawSRVs].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 2, D3D12_SHADER_VISIBILITY_VERTEX);
-		//s_DrawSig.Finalize(L"Particle Slot Reuse Draw RootSig");
+		// 2) Draw Root Sig
+		s_DrawSig.Reset(kNumDrawRootParams, 0);
+		s_DrawSig[kDrawCBVs].InitAsConstantBuffer(0, D3D12_SHADER_VISIBILITY_VERTEX);
+		s_DrawSig[kDrawSRVs].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 2, D3D12_SHADER_VISIBILITY_VERTEX);
+		s_DrawSig.Finalize(L"Particle Slot Reuse Draw RootSig");
 
 		// ----------------------
 		//			PSO
@@ -79,7 +79,7 @@ namespace
 		s_SimulateFlagsPSO.SetComputeShader(g_pParticleSimulateFlagsCS, sizeof(g_pParticleSimulateFlagsCS));
 		s_SimulateFlagsPSO.Finalize();
 
-		/*auto setupDrawPSO = [](GraphicsPSO& pso, const void* vs, size_t vsSize)
+		auto setupDrawPSO = [](GraphicsPSO& pso, const void* vs, size_t vsSize)
 			{
 				pso.SetRootSignature(s_DrawSig);
 				pso.SetRasterizerState(RasterizerTwoSided);
@@ -93,7 +93,7 @@ namespace
 			};
 
 		setupDrawPSO(s_DrawPSO, g_pParticleDrawReuseVS, sizeof(g_pParticleDrawReuseVS));
-		setupDrawPSO(s_DrawFlagsPSO, g_pParticleDrawReuseFlagsVS, sizeof(g_pParticleDrawReuseFlagsVS));*/
+		setupDrawPSO(s_DrawFlagsPSO, g_pParticleDrawReuseFlagsVS, sizeof(g_pParticleDrawReuseFlagsVS));
 
 		s_Initialized = true;
 	}
@@ -148,13 +148,25 @@ void SlotReusePool::Shutdown()
 	m_ParticleBuffer.Destroy();
 }
 
-void SlotReusePool::Update(float deltaT, const EmitRequest* requests, uint32_t numRequests)
+void SlotReusePool::Update(float deltaT, const EmitRequest& emitRequest)
 {
 #ifndef RELEASE
 	CollectCounterReadback();
 #endif
 
-	const Simconstants frame = BuildFrameConstants(deltaT, m_MaxParticles);
+	Simconstants sc = {};
+	XMStoreFloat3(&sc.emitterPos, emitRequest.emitPosition);
+	sc.deltaTime = deltaT;
+	sc.gravity = { 0.f, -2.f, 0.f };			// TEMP
+	sc.emitCount = emitRequest.emitCount;
+	sc.minLife = emitRequest.emitParams.minLife;
+	sc.maxLife = emitRequest.emitParams.maxLife;
+	sc.minSpeed = 1.f;
+	sc.maxSpeed = 4.f;
+	sc.particleSize = emitRequest.emitParams.minSize;	// TEMP
+	sc.maxParticles = m_MaxParticles;
+	sc.randomSeed = HashU32(m_FrameIndex + 1);
+	sc.baseColor = PackColor(255, 128, 45, 255); // TEMP 주황
 
 	// -------------------------
 	//		BEGIN COMPUTE
@@ -172,24 +184,19 @@ void SlotReusePool::Update(float deltaT, const EmitRequest* requests, uint32_t n
 
 	// 2) Bind
 	ctx.SetRootSignature(s_ComputeSig);
+	ctx.SetDynamicConstantBufferView(kComputeCBVs, sizeof(sc), &sc);
 
 	const D3D12_CPU_DESCRIPTOR_HANDLE uavs[4]
 		= { m_ParticleBuffer.GetUAV(), m_DeadListBuffer.GetUAV(), m_CounterBuffer.GetUAV(), m_AliveFlagBuffer.GetUAV() };
 	ctx.SetDynamicDescriptors(kComputeUAVs, 0, 4, uavs);
 
-	// 3) Emit : 이미터마다 dispatch 하나, DeadList는 모두가 같이 쓴다
+	// 3) Emit
 	{
 		ScopedTimer _t(L"Particle Emit", ctx); // RAII
-		ctx.SetPipelineState(s_EmitPSO);
-		for (uint32_t r = 0; r < numRequests; ++r)
+		if (emitRequest.emitCount > 0)
 		{
-			if (requests[r].emitCount == 0)
-				continue;
-
-			Simconstants sc = frame;
-			FillEmitConstants(sc, requests[r], m_FrameIndex);
-			ctx.SetDynamicConstantBufferView(kComputeCBVs, sizeof(sc), &sc);
-			ctx.Dispatch1D(requests[r].emitCount, sThreadGroupSize);
+			ctx.SetPipelineState(s_EmitPSO);
+			ctx.Dispatch1D(emitRequest.emitCount, sThreadGroupSize);
 		}
 	}
 
@@ -199,7 +206,6 @@ void SlotReusePool::Update(float deltaT, const EmitRequest* requests, uint32_t n
 	ctx.InsertUAVBarrier(m_CounterBuffer, true);
 
 	// 4) Simulate
-	ctx.SetDynamicConstantBufferView(kComputeCBVs, sizeof(frame), &frame);
 	{
 		const bool useFlagArray = (m_Mode == Mode::SlotReuseFlags);
 		ScopedTimer _t(L"Particle Simulate", ctx);
@@ -221,46 +227,30 @@ void SlotReusePool::Update(float deltaT, const EmitRequest* requests, uint32_t n
 	++m_FrameIndex;
 }
 
-//void SlotReusePool::Render(GraphicsContext& gfx, const Math::Camera& cam)
-//{
-//	gfx.TransitionResource(m_ParticleBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-//	gfx.TransitionResource(m_AliveFlagBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-//	const bool useFlagArray = (m_Mode == Mode::SlotReuseFlags);
-//
-//	DrawConstants dc = {};
-//	XMStoreFloat4x4(&dc.viewProj, cam.GetViewProjMatrix());
-//	XMStoreFloat4(&dc.camRight, cam.GetRightVec());
-//	dc.camRight.w = 0.f;
-//	XMStoreFloat4(&dc.camUp, cam.GetUpVec());
-//	dc.camUp.w = 0.f;
-//
-//	gfx.SetRootSignature(s_DrawSig);
-//	gfx.SetPipelineState(useFlagArray ? s_DrawFlagsPSO : s_DrawPSO);
-//	gfx.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-//	gfx.SetDynamicConstantBufferView(kDrawCBVs, sizeof(dc), &dc);
-//
-//	const D3D12_CPU_DESCRIPTOR_HANDLE srvs[2] = { m_ParticleBuffer.GetSRV(), m_AliveFlagBuffer.GetSRV() };
-//	gfx.SetDynamicDescriptors(kDrawSRVs, 0, 2, srvs);
-//
-//	ScopedTimer _t(L"Particle Draw", gfx);
-//	gfx.DrawInstanced(6, m_MaxParticles);
-//}
-
-Particles::DrawInput SlotReusePool::PrepareDraw(GraphicsContext& gfx)
+void SlotReusePool::Render(GraphicsContext& gfx, const Math::Camera& cam)
 {
 	gfx.TransitionResource(m_ParticleBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	gfx.TransitionResource(m_AliveFlagBuffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	const bool useFlagArray = (m_Mode == Mode::SlotReuseFlags);
 
-	DrawInput in;
-	in.source = (m_Mode == Mode::SlotReuseFlags) ? DrawSource::SlotReuseFlags : DrawSource::SlotReuse;
-	in.srvs[0] = m_ParticleBuffer.GetSRV();		// t0
-	in.srvs[1] = m_AliveFlagBuffer.GetSRV();	// t1 (SlotReuse VS는 안 읽지만 기존과 동일하게 바인딩)
-	in.numSrvs = 2;
-	in.maxParticle = m_MaxParticles;
-	return in;
+	DrawConstants dc = {};
+	XMStoreFloat4x4(&dc.viewProj, cam.GetViewProjMatrix());
+	XMStoreFloat4(&dc.camRight, cam.GetRightVec());
+	dc.camRight.w = 0.f;
+	XMStoreFloat4(&dc.camUp, cam.GetUpVec());
+	dc.camUp.w = 0.f;
+
+	gfx.SetRootSignature(s_DrawSig);
+	gfx.SetPipelineState(useFlagArray ? s_DrawFlagsPSO : s_DrawPSO);
+	gfx.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	gfx.SetDynamicConstantBufferView(kDrawCBVs, sizeof(dc), &dc);
+
+	const D3D12_CPU_DESCRIPTOR_HANDLE srvs[2] = { m_ParticleBuffer.GetSRV(), m_AliveFlagBuffer.GetSRV() };
+	gfx.SetDynamicDescriptors(kDrawSRVs, 0, 2, srvs);
+
+	ScopedTimer _t(L"Particle Draw", gfx);
+	gfx.DrawInstanced(6, m_MaxParticles);
 }
-
-
 
 bool SlotReusePool::VerifyInitialState()
 {

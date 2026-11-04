@@ -12,7 +12,7 @@ namespace Particles
 		DirectX::XMFLOAT3 position;	float life;
 		DirectX::XMFLOAT3 velocity; float maxlife;
 		uint32_t		  color;	float size;
-		uint32_t		  flags;	uint32_t emitterId;	// 어느 이미터가 만들었는가 (공유 풀에서 이미터 구분용)
+		uint32_t		  flags;	uint32_t pad;
 	};	
 	static_assert(sizeof(Particle) == 48, "HLSL Particle stride(48 B)와 일치해야 함");
 
@@ -43,25 +43,14 @@ namespace Particles
 		uint32_t aliveAfterSim;
 	};
 	
-	enum class ColorMode : uint32_t
-	{
-		Fixed = 0,		// colorA 단색
-		Range,			// colorA ~ colorB 사이 랜덤
-		RandomHue,		// Hue 랜덤, 밝기 = intensity
-		COUNT
-	};
-
 	struct alignas(16) Simconstants
 	{
 		DirectX::XMFLOAT3 emitterPos;	float deltaTime;
 		DirectX::XMFLOAT3 gravity;		uint32_t emitCount;
 		float minLife; float maxLife; float minSpeed; float maxSpeed;
-		float particleSize; uint32_t maxParticles; uint32_t randomSeed;  uint32_t colorMode;
-		DirectX::XMFLOAT4 colorA;		// rgb : HDR 색(밝기 곱한 값), w : 밝기
-		DirectX::XMFLOAT4 colorB;		// rgb : HDR 색 (Range 전용)
-		uint32_t emitterId;	uint32_t pad[3];	// Emit 때 Particle.emitterId에 기록
+		float particleSize; uint32_t maxParticles; uint32_t randomSeed; uint32_t baseColor;
 	};
-	static_assert(sizeof(Simconstants) == 112, "HLSL cbuffer SimConstants(112 B)와 일치해야 함");
+	static_assert(sizeof(Simconstants) == 64, "HLSL cbuffer SimConstants(64 B)와 일치해야 함");
 
 	// 파티클 렌더링에 필요한 Constant Buffer
 	struct alignas(16) DrawConstants
@@ -82,7 +71,6 @@ namespace Particles
 		AliveIndirectWave = 6,
 		Compaction = 7,
 	};
-
 
 	inline bool IsDefault(Mode m) { return m == Mode::Default; }
 	inline bool IsSlotFamily(Mode m) { return m == Mode::SlotReuse || m == Mode::SlotReuseFlags; }

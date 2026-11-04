@@ -58,10 +58,10 @@ namespace
 		s_ComputeSig.Finalize(L"Particle Compact Compute RootSig");
 
 		// 2) Draw RootSig : t0 = 파티클 하나만 (명단, 카운터 필요 없음)
-		/*s_DrawSig.Reset(kNumDrawRootParams, 0);
+		s_DrawSig.Reset(kNumDrawRootParams, 0);
 		s_DrawSig[kDrawCBVs].InitAsConstantBuffer(0, D3D12_SHADER_VISIBILITY_VERTEX);
 		s_DrawSig[kDrawSRVs].InitAsDescriptorRange(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1, D3D12_SHADER_VISIBILITY_VERTEX);
-		s_DrawSig.Finalize(L"Particle Compact Draw RootSig");*/
+		s_DrawSig.Finalize(L"Particle Compact Draw RootSig");
 
 		// ----------------------
 		//			PSO
@@ -82,15 +82,15 @@ namespace
 		s_AfterSimPSO.SetComputeShader(g_pParticleAfterSimAliveCS, sizeof(g_pParticleAfterSimAliveCS));
 		s_AfterSimPSO.Finalize();
 
-		//s_DrawPSO.SetRootSignature(s_DrawSig);
-		//s_DrawPSO.SetRasterizerState(RasterizerTwoSided);
-		//s_DrawPSO.SetBlendState(BlendAdditive);
-		//s_DrawPSO.SetDepthStencilState(DepthStateDisabled);
-		//s_DrawPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
-		//s_DrawPSO.SetRenderTargetFormat(g_SceneColorBuffer.GetFormat(), DXGI_FORMAT_UNKNOWN);
-		//s_DrawPSO.SetVertexShader(g_pParticleDrawCompactVS, sizeof(g_pParticleDrawCompactVS));
-		//s_DrawPSO.SetPixelShader(g_pParticleDrawPS, sizeof(g_pParticleDrawPS));
-		//s_DrawPSO.Finalize();
+		s_DrawPSO.SetRootSignature(s_DrawSig);
+		s_DrawPSO.SetRasterizerState(RasterizerTwoSided);
+		s_DrawPSO.SetBlendState(BlendAdditive);
+		s_DrawPSO.SetDepthStencilState(DepthStateDisabled);
+		s_DrawPSO.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+		s_DrawPSO.SetRenderTargetFormat(g_SceneColorBuffer.GetFormat(), DXGI_FORMAT_UNKNOWN);
+		s_DrawPSO.SetVertexShader(g_pParticleDrawCompactVS, sizeof(g_pParticleDrawCompactVS));
+		s_DrawPSO.SetPixelShader(g_pParticleDrawPS, sizeof(g_pParticleDrawPS));
+		s_DrawPSO.Finalize();
 
 		s_Initialized = true;
 	}
@@ -137,13 +137,25 @@ void CompactionPool::Shutdown()
 	m_ParticleBuffer[1].Destroy();
 }
 
-void CompactionPool::Update(float deltaT, const EmitRequest* requests, uint32_t numRequests)
+void CompactionPool::Update(float deltaT, const EmitRequest& emitRequest)
 {
 #ifndef RELEASE
 	CollectCounterReadback();
 #endif
 
-	const Simconstants frame = BuildFrameConstants(deltaT, m_MaxParticles);
+	Simconstants sc = {};
+	XMStoreFloat3(&sc.emitterPos, emitRequest.emitPosition);
+	sc.deltaTime = deltaT;
+	sc.gravity = { 0.f, -2.f, 0.f };			// TEMP
+	sc.emitCount = emitRequest.emitCount;
+	sc.minLife = emitRequest.emitParams.minLife;
+	sc.maxLife = emitRequest.emitParams.maxLife;
+	sc.minSpeed = 1.f;
+	sc.maxSpeed = 4.f;
+	sc.particleSize = emitRequest.emitParams.minSize;	// TEMP
+	sc.maxParticles = m_MaxParticles;
+	sc.randomSeed = HashU32(m_FrameIndex + 1);
+	sc.baseColor = PackColor(255, 128, 45, 255); // TEMP 주황
 
 	// -------------------------
 	//		BEGIN COMPUTE
@@ -161,6 +173,7 @@ void CompactionPool::Update(float deltaT, const EmitRequest* requests, uint32_t 
 
 	// 2) Bind
 	ctx.SetRootSignature(s_ComputeSig);
+	ctx.SetDynamicConstantBufferView(kComputeCBVs, sizeof(sc), &sc);
 
 	const D3D12_CPU_DESCRIPTOR_HANDLE uavs[4] =
 	{
@@ -171,23 +184,16 @@ void CompactionPool::Update(float deltaT, const EmitRequest* requests, uint32_t 
 	};
 	ctx.SetDynamicDescriptors(kComputeUAVs, 0, 4, uavs);
 
-	// 3) Emit : 입력 버퍼 끝에 붙이기 (이미터마다 dispatch 하나)
+	// 3) Emit : 입력 버퍼 끝에 붙이기
 	{
 		ScopedTimer _t(L"Particle Emit", ctx);
-		ctx.SetPipelineState(s_EmitPSO);
-		for (uint32_t r = 0; r < numRequests; ++r)
+		if (emitRequest.emitCount > 0)
 		{
-			if (requests[r].emitCount == 0)
-				continue;
-
-			Simconstants sc = frame;
-			FillEmitConstants(sc, requests[r], m_FrameIndex);
-			ctx.SetDynamicConstantBufferView(kComputeCBVs, sizeof(sc), &sc);
-			ctx.Dispatch1D(requests[r].emitCount, sThreadGroupSize);
+			ctx.SetPipelineState(s_EmitPSO);
+			ctx.Dispatch1D(emitRequest.emitCount, sThreadGroupSize);
 		}
 	}
 	InsertUAVBarriers(ctx);
-	ctx.SetDynamicConstantBufferView(kComputeCBVs, sizeof(frame), &frame);
 
 	// 4-1) ArgsPre : alive 수로 Simulate 그룹 수 계산
 	{
@@ -231,35 +237,28 @@ void CompactionPool::Update(float deltaT, const EmitRequest* requests, uint32_t 
 	m_Current = 1 - m_Current;
 }
 
-
-//void CompactionPool::Render(GraphicsContext& gfx, const Math::Camera& cam)
-//{
-//	gfx.TransitionResource(Current(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-//	gfx.TransitionResource(m_IndirectArgsBuffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
-//
-//	DrawConstants dc = {};
-//	XMStoreFloat4x4(&dc.viewProj, cam.GetViewProjMatrix());
-//	XMStoreFloat4(&dc.camRight, cam.GetRightVec());
-//	dc.camRight.w = 0.f;
-//	XMStoreFloat4(&dc.camUp, cam.GetUpVec());
-//	dc.camUp.w = 0.f;
-//
-//	gfx.SetRootSignature(s_DrawSig);
-//	gfx.SetPipelineState(s_DrawPSO);
-//	gfx.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-//	gfx.SetDynamicConstantBufferView(kDrawCBVs, sizeof(dc), &dc);
-//
-//	const D3D12_CPU_DESCRIPTOR_HANDLE srvs[1] = { Current().GetSRV() };	// t0
-//	gfx.SetDynamicDescriptors(kDrawSRVs, 0, 1, srvs);
-//
-//	ScopedTimer _t(L"Particle Draw", gfx);
-//	gfx.DrawIndirect(m_IndirectArgsBuffer, kDrawArgs);
-//}
-
-
-Particles::DrawInput CompactionPool::PrepareDraw(GraphicsContext& gfx)
+void CompactionPool::Render(GraphicsContext& gfx, const Math::Camera& cam)
 {
-	return Particles::DrawInput();
+	gfx.TransitionResource(Current(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	gfx.TransitionResource(m_IndirectArgsBuffer, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+
+	DrawConstants dc = {};
+	XMStoreFloat4x4(&dc.viewProj, cam.GetViewProjMatrix());
+	XMStoreFloat4(&dc.camRight, cam.GetRightVec());
+	dc.camRight.w = 0.f;
+	XMStoreFloat4(&dc.camUp, cam.GetUpVec());
+	dc.camUp.w = 0.f;
+
+	gfx.SetRootSignature(s_DrawSig);
+	gfx.SetPipelineState(s_DrawPSO);
+	gfx.SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	gfx.SetDynamicConstantBufferView(kDrawCBVs, sizeof(dc), &dc);
+
+	const D3D12_CPU_DESCRIPTOR_HANDLE srvs[1] = { Current().GetSRV() };	// t0
+	gfx.SetDynamicDescriptors(kDrawSRVs, 0, 1, srvs);
+
+	ScopedTimer _t(L"Particle Draw", gfx);
+	gfx.DrawIndirect(m_IndirectArgsBuffer, kDrawArgs);
 }
 
 bool CompactionPool::VerifyInitialState()

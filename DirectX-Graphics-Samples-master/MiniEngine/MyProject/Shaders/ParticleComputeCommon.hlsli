@@ -3,8 +3,6 @@
 
 #include "ParticleCommon.hlsli"
 
-
-
 cbuffer SimConstants : register(b0)
 {
     float3 EmitterPos;
@@ -18,28 +16,7 @@ cbuffer SimConstants : register(b0)
     float ParticleSize;
     uint MaxParticles;
     uint RandomSeed;
-    uint ColorMode;
-    float4 ColorA;
-    float4 ColorB;    
-    uint EmitterId;     // written to Particle.emitterId on emit
-    uint3 SimPad;
-}
-
-#define COLOR_MODE_FIXED    0
-#define COLOR_MODE_RANGE    1
-#define COLOR_MODE_HUE      2
-
-float3 RandomColor(inout uint rng)
-{
-    [branch]
-    if (ColorMode == COLOR_MODE_RANGE)
-        return lerp(ColorA.rgb, ColorB.rgb, Rand01(rng));
-
-    [branch]
-    if (ColorMode == COLOR_MODE_HUE)
-        return HueToRGB(Rand01(rng)) * ColorA.w;
-
-    return ColorA.rgb;
+    uint BaseColor;
 }
 
 RWStructuredBuffer<Particle>    Particles : register(u0);
