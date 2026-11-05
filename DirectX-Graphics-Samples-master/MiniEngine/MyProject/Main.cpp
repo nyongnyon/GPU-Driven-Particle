@@ -126,6 +126,7 @@ void MyProject::Update( float deltaT )
 {
     ScopedTimer _prof(L"Update State");
 
+
     // Update something
     m_CameraController->Update(deltaT);
 

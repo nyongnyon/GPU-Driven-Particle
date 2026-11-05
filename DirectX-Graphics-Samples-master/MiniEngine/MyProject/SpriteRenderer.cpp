@@ -89,7 +89,7 @@ RendererDesc SpriteRenderer::Desc()
 	{
 		{kPositionTag, &Types::Float3},
 		{kColorTag, &Types::Float4},
-		{kSizeTag, &Types::Float2}
+		{kSizeTag, &Types::Float}
 	};
 
 	return desc;
