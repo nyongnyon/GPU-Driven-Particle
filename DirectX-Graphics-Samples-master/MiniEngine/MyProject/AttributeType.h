@@ -1,3 +1,4 @@
+
 #pragma once
 
 struct float2 { float x, y; };
@@ -44,17 +45,12 @@ namespace Types
     bool IsGpuCompatible(const TypeInfo& t, std::string* whyNot = nullptr);
 }
 
-// ---------------------------------------------------------------------
-// C++ 타입 -> TypeInfo 연결
-//   버퍼에서 값을 꺼낼 때 레이아웃의 타입과 같은지 확인하는 데 쓴다.
-//   새 타입을 추가하려면 여기에 선언하고 AttributeType.cpp 에 정의를 하나 더 쓴다.
-// ---------------------------------------------------------------------
 template <typename T> const TypeInfo& TypeOf();
 
-template <> const TypeInfo& TypeOf<float>();
-template <> const TypeInfo& TypeOf<float2>();
-template <> const TypeInfo& TypeOf<float3>();
-template <> const TypeInfo& TypeOf<float4>();
-template <> const TypeInfo& TypeOf<int32_t>();
-template <> const TypeInfo& TypeOf<uint32_t>();
-template <> const TypeInfo& TypeOf<NBool>();
+template <> const TypeInfo& TypeOf<float>() { return Types::Float; }
+template <> const TypeInfo& TypeOf<float2>() { return Types::Float2; }
+template <> const TypeInfo& TypeOf<float3>() { return Types::Float3; }
+template <> const TypeInfo& TypeOf<float4>() { return Types::Float4; }
+template <> const TypeInfo& TypeOf<int32_t>() { return Types::Int32; }
+template <> const TypeInfo& TypeOf<uint32_t>() { return Types::UInt32; }
+template <> const TypeInfo& TypeOf<NBool>() { return Types::Bool; }

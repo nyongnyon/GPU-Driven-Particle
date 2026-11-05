@@ -3,6 +3,7 @@
 #include "AttributeType.h"
 #include <vector>
 #include <string>
+#include <functional>
 
 enum class Stage 
 { 
@@ -24,6 +25,7 @@ struct Usage
     const TypeInfo* type;   // 예: &Types::Float3
 };
 
+class ModuleContext;
 // 모듈 선언 (값으로 복사해서 저장할 수 있도록 일반 구조체로 둔다)
 struct ModuleDesc
 {
@@ -31,6 +33,8 @@ struct ModuleDesc
     Stage              stage;
     std::vector<Usage> reads;
     std::vector<Usage> writes;
+
+    std::function<void(ModuleContext&)> execute;
 };
 
 // 렌더러(또는 엔진 단계)는 읽기만 한다

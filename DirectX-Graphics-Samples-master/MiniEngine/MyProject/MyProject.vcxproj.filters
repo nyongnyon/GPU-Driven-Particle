@@ -66,9 +66,6 @@
     <ClCompile Include="ModuleDesc.cpp">
       <Filter>Particle\Modules</Filter>
     </ClCompile>
-    <ClCompile Include="AttributeLayout.cpp">
-      <Filter>Particle\Modules</Filter>
-    </ClCompile>
     <ClCompile Include="AttributeKey.cpp">
       <Filter>Particle\Modules</Filter>
     </ClCompile>
@@ -83,6 +80,12 @@
     </ClCompile>
     <ClCompile Include="EmitterCompiler.cpp">
       <Filter>Particle\Emitter</Filter>
+    </ClCompile>
+    <ClCompile Include="ModuleContext.cpp">
+      <Filter>Particle\Modules</Filter>
+    </ClCompile>
+    <ClCompile Include="ModuleLibrary.cpp">
+      <Filter>Particle\Modules</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -117,9 +120,6 @@
     <ClInclude Include="ModuleDesc.h">
       <Filter>Particle\Modules</Filter>
     </ClInclude>
-    <ClInclude Include="AttributeLayout.h">
-      <Filter>Particle\Modules</Filter>
-    </ClInclude>
     <ClInclude Include="AttributeKey.h">
       <Filter>Particle\Modules</Filter>
     </ClInclude>
@@ -137,6 +137,12 @@
     </ClInclude>
     <ClInclude Include="EmitterCompiler.h">
       <Filter>Particle\Emitter</Filter>
+    </ClInclude>
+    <ClInclude Include="ModuleContext.h">
+      <Filter>Particle\Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="ModuleLibrary.h">
+      <Filter>Particle\Modules</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
