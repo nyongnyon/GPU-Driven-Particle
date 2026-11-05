@@ -23,6 +23,4 @@ struct CompiledEmitter
     bool Ok() const { return errors.empty(); }
 };
 
-// 컴파일 결과를 사람이 읽을 수 있는 문자열로 만든다.
-// (출력 방법은 호출하는 쪽이 정한다. 예: Utility::Print(DescribeCompiled(c, "Fire").c_str()))
 std::string DescribeCompiled(const CompiledEmitter& c, const std::string& title);

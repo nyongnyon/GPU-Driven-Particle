@@ -17,12 +17,14 @@ ModuleContext::ModuleContext(const CompiledEmitter& compiled,
     uint8_t* particleData,
     uint8_t* emitterData,
     const EngineValues& engine,
+    uint32_t               capacity,
     uint32_t               begin,
     uint32_t               end)
     : m_Compiled(compiled)
     , m_ParticleData(particleData)
     , m_EmitterData(emitterData)
     , m_Engine(engine)
+    , m_Capacity(capacity)
     , m_Begin(begin)
     , m_End(end)
 {

@@ -33,6 +33,12 @@
     <Filter Include="Particle\Modules">
       <UniqueIdentifier>{8d3d7f7f-f029-40b4-9bc1-1fa097ba2d8d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Particle\Renderer">
+      <UniqueIdentifier>{bf3b9357-519b-4096-9bbe-9a6a2d2b6a95}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Particle\Sorter">
+      <UniqueIdentifier>{6a5fff65-3e1b-41fe-bb3a-47baa08da9fd}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -86,6 +92,15 @@
     </ClCompile>
     <ClCompile Include="ModuleLibrary.cpp">
       <Filter>Particle\Modules</Filter>
+    </ClCompile>
+    <ClCompile Include="EmitterInstance.cpp">
+      <Filter>Particle\Emitter</Filter>
+    </ClCompile>
+    <ClCompile Include="SpriteRenderer.cpp">
+      <Filter>Particle\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="ParticleSorter.cpp">
+      <Filter>Particle\Sorter</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -143,6 +158,15 @@
     </ClInclude>
     <ClInclude Include="ModuleLibrary.h">
       <Filter>Particle\Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="EmitterInstance.h">
+      <Filter>Particle\Emitter</Filter>
+    </ClInclude>
+    <ClInclude Include="SpriteRenderer.h">
+      <Filter>Particle\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="ParticleSorter.h">
+      <Filter>Particle\Sorter</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -206,6 +230,9 @@
       <Filter>Shaders\Particle</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ParticleSimulateAliveWaveCS.hlsl">
+      <Filter>Shaders\Particle</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleSpriteVS.hlsl">
       <Filter>Shaders\Particle</Filter>
     </FxCompile>
   </ItemGroup>

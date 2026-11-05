@@ -28,6 +28,7 @@ public:
 		uint8_t* particleData,   // 파티클 버퍼 시작 (Stride x 최대 개수)
 		uint8_t* emitterData,    // Emitter 저장소 시작
 		const EngineValues& engine,
+		uint32_t			   capacity,
 		uint32_t               begin,          // 이번에 처리할 파티클 범위 [begin, end)
 		uint32_t               end);
 
@@ -46,9 +47,10 @@ private:
 	static const Slot* FindChecked(const Block& block, const std::string& fullName, const TypeInfo& expected);
 
 	const CompiledEmitter& m_Compiled;
-	uint8_t* m_ParticleData;
-	uint8_t* m_EmitterData;
+	uint8_t*				m_ParticleData;
+	uint8_t*				m_EmitterData;
 	const EngineValues&		m_Engine;
+	uint32_t				m_Capacity;
 	uint32_t               m_Begin;
 	uint32_t               m_End;
 };
@@ -56,11 +58,11 @@ private:
 template<typename T>
 inline StridedView<T> ModuleContext::Particles(const std::string& name)
 {
-	const Slot* slot = FindChecked(m_Compiled.particles, name, Typeof<T>());
+	const Slot* slot = FindChecked(m_Compiled.particles, name, TypeOf<T>());
 
 	StridedView<T> ret;
-	ret.base = m_ParticleData + slot->offset;
-	ret.stride = m_Compiled.particles.Stride();
+	ret.base = m_ParticleData + size_t(slot->offset) * m_Capacity;
+	ret.stride = slot->type->size;
 	return ret;
 }
 

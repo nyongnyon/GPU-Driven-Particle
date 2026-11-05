@@ -47,10 +47,10 @@ namespace Types
 
 template <typename T> const TypeInfo& TypeOf();
 
-template <> const TypeInfo& TypeOf<float>() { return Types::Float; }
-template <> const TypeInfo& TypeOf<float2>() { return Types::Float2; }
-template <> const TypeInfo& TypeOf<float3>() { return Types::Float3; }
-template <> const TypeInfo& TypeOf<float4>() { return Types::Float4; }
-template <> const TypeInfo& TypeOf<int32_t>() { return Types::Int32; }
-template <> const TypeInfo& TypeOf<uint32_t>() { return Types::UInt32; }
-template <> const TypeInfo& TypeOf<NBool>() { return Types::Bool; }
+template <> const TypeInfo& TypeOf<float>();
+template <> const TypeInfo& TypeOf<float2>();
+template <> const TypeInfo& TypeOf<float3>();
+template <> const TypeInfo& TypeOf<float4>();
+template <> const TypeInfo& TypeOf<int32_t>();
+template <> const TypeInfo& TypeOf<uint32_t>();
+template <> const TypeInfo& TypeOf<NBool>();

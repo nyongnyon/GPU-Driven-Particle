@@ -166,7 +166,7 @@ CompiledEmitter EmitterCompiler::Compile() const
             out.emitterParams.Add(e->key, e->type);
             break;
         case Storage::SystemStore:
-            out.systemParams.Add(e->key, e->type);
+            out.systemParams.Add(e->key, e->type); 
             break;
         case Storage::Temporary:
             if (e->read && !e->written)
