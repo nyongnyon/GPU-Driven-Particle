@@ -168,6 +168,9 @@
     <ClInclude Include="ParticleSorter.h">
       <Filter>Particle\Sorter</Filter>
     </ClInclude>
+    <ClInclude Include="TagLibrary.h">
+      <Filter>Particle\Modules</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="Logo.png">

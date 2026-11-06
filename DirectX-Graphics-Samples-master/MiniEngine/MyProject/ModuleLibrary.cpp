@@ -4,6 +4,7 @@
 
 #include "AttributeType.h"
 
+#include "TagLibrary.h"
 
 ModuleDesc SpawnRate(float rate)
 {
@@ -13,20 +14,20 @@ ModuleDesc SpawnRate(float rate)
 	m.stage = Stage::EmitterUpdate;
 	m.reads = 
 	{ 
-		{"Engine.DeltaTime", &Types::Float},
-		{"Emitter.SpawnCount", &Types::UInt32 },
-		{"Emitter.SpawnRemainder", &Types::Float}	
+		{Engine::DeltaTime, &Types::Float},
+		{Emitter::SpawnCount, &Types::UInt32 },
+		{Emitter::SpawnRemainder, &Types::Float}	
 	};
 	m.writes =
 	{
-		{"Emitter.SpawnCount", &Types::UInt32 },
-		{"Emitter.SpawnRemainder", &Types::Float}
+		{Emitter::SpawnCount, &Types::UInt32 },
+		{Emitter::SpawnRemainder, &Types::Float}
 	};
 
 	m.execute = [rate](ModuleContext& ctx) 
 		{
-			float& remainder = ctx.Emitter<float>("Emitter.SpawnRemainder");
-			uint32_t& count = ctx.Emitter<uint32_t>("Emitter.SpawnCount");
+			float& remainder = ctx.Emitter<float>(Emitter::SpawnRemainder);
+			uint32_t& count = ctx.Emitter<uint32_t>(Emitter::SpawnCount);
 
 			const float want = rate * ctx.DeltaTime() + remainder;
 			const uint32_t n = static_cast<uint32_t>(want);
@@ -46,15 +47,15 @@ ModuleDesc InitializeParticle(float size, float lifeTime, float4 color)
 	m.stage = Stage::ParticleSpawn;
 	m.reads =
 	{
-		{"Engine.Owner.Position", &Types::Float3}
+		{Engine::OwnerPosition, &Types::Float3}
 	};
 	m.writes =
 	{
-		{"Particles.Position", &Types::Float3},
-		{"Particles.Color", &Types::Float4},
-		{"Particles.Size", &Types::Float},
-		{"Particles.Lifetime", &Types::Float},
-		{"Particles.Age", &Types::Float}
+		{Particles::Position, &Types::Float3},
+		{Particles::Color, &Types::Float4},
+		{Particles::Size, &Types::Float},
+		{Particles::Lifetime, &Types::Float},
+		{Particles::Age, &Types::Float}
 	};
 
 
@@ -62,16 +63,16 @@ ModuleDesc InitializeParticle(float size, float lifeTime, float4 color)
 		{
 			const float3 origin = ctx.OwnerPosition();
 
-			auto pos = ctx.Particles<float3>("Particles.Position");
-			auto col = ctx.Particles<float4>("Particles.Color");
-			auto sizes = ctx.Particles<float>("Particles.Size");
+			auto pos = ctx.Particles<float3>(Particles::Position);
+			auto col = ctx.Particles<float4>(Particles::Color);
+			auto sizes = ctx.Particles<float>(Particles::Size);
 		
-			const bool hasLife = ctx.HasParticle("Particles.Lifetime");
-			const bool hasAge = ctx.HasParticle("Particles.Age");
+			const bool hasLife = ctx.HasParticle(Particles::Lifetime);
+			const bool hasAge = ctx.HasParticle(Particles::Age);
 			StridedView<float> life = {};
 			StridedView<float> age = {};
-			if (hasLife) life = ctx.Particles<float>("Particles.Lifetime");
-			if (hasAge)  age = ctx.Particles<float>("Particles.Age");
+			if (hasLife) life = ctx.Particles<float>(Particles::Lifetime);
+			if (hasAge)  age = ctx.Particles<float>(Particles::Age);
 
 			for (uint32_t i = ctx.Begin(); i < ctx.End(); ++i)
 			{
@@ -94,18 +95,18 @@ ModuleDesc ShapeLocation(float radius, bool surfaceOnly)
 	m.stage = Stage::ParticleSpawn;
 	m.reads =
 	{
-		{"Particles.Position", &Types::Float3}
+		{ Particles::Position, &Types::Float3 }
 	};
 	m.writes = 
 	{
-		{"Particles.Position", &Types::Float3}
+		{Particles::Position, &Types::Float3}
 	};
 
 	m.execute = [radius, surfaceOnly](ModuleContext& ctx)
 		{
 			const float kTwoPi = 6.28318530f;
 
-			auto pos = ctx.Particles<float3>("Particles.Position");
+			auto pos = ctx.Particles<float3>(Particles::Position);
 			
 			for (uint32_t i = ctx.Begin(); i < ctx.End(); ++i)
 			{
@@ -132,29 +133,27 @@ ModuleDesc ParticleState(bool killOnLifeTime)
 	m.stage = Stage::ParticleUpdate;
 	m.reads =
 	{
-		{"Engine.DeltaTime", &Types::Float},
-		{"Particles.Age", &Types::Float},
-		{"Particles.Lifetime", &Types::Float}
+		{Engine::DeltaTime, &Types::Float},
+		{Particles::Age, &Types::Float},
+		{Particles::Lifetime, &Types::Float}
 	};
 	m.writes =
 	{
-		{"Particles.Age", &Types::Float},
-		{"Particles.NormalizedAge", &Types::Float}
+		{Particles::Age, &Types::Float},
+		{Particles::NormalizedAge, &Types::Float}
 	};
 
 	m.execute = [killOnLifeTime](ModuleContext& ctx)
 		{
 			const float dt = ctx.DeltaTime();
 
-			auto age = ctx.Particles<float>("Particles.Age");
-			auto life = ctx.Particles<float>("Particles.Lifetime");
+			auto age = ctx.Particles<float>(Particles::Age);
+			auto life = ctx.Particles<float>(Particles::Lifetime);
 
-			// NormalizedAge 는 읽는 모듈이 있을 때만 레이아웃에 자리가 있다 (없으면 Trim 됨)
-			// -> 자리가 없으면 계산을 건너뛴다
-			const bool hasNormalized = ctx.HasParticle("Particles.NormalizedAge");
+			const bool hasNormalized = ctx.HasParticle(Particles::NormalizedAge);
 			StridedView<float> nage = {};
 			if (hasNormalized)
-				nage = ctx.Particles<float>("Particles.NormalizedAge");
+				nage = ctx.Particles<float>(Particles::NormalizedAge);
 
 			for (uint32_t i = ctx.Begin(); i < ctx.End(); ++i)
 			{

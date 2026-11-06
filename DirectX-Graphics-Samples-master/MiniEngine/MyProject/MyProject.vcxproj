@@ -76,6 +76,7 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="ProfileRecorder.h" />
     <ClInclude Include="SpriteRenderer.h" />
+    <ClInclude Include="TagLibrary.h" />
     <ClInclude Include="TexturedQuad.h" />
   </ItemGroup>
   <ItemGroup>

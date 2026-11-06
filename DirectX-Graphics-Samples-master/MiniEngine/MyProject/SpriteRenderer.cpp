@@ -11,20 +11,19 @@
 #include "PipelineState.h"
 #include "Camera.h"
 
-#include <DirectXMath.h>
+#include "TagLibrary.h"
 
 #include "CompiledShaders/ParticleDrawPS.h"
 #include "CompiledShaders/ParticleSpriteVS.h"
 
+#include <DirectXMath.h>
 #include <numeric>
 
 using namespace Graphics;
 
 namespace
 {
-	const char* kPositionTag = "Particles.Position";
-	const char* kColorTag = "Particles.Color";
-	const char* kSizeTag = "Particles.Size";
+
 
 	// HLSL cbuffer SpriteConstants 와 같은 배치 (112 바이트)
 	struct alignas(16) SpriteConstants
@@ -87,9 +86,9 @@ RendererDesc SpriteRenderer::Desc()
 	desc.name = "Sprite Renderer";
 	desc.reads =
 	{
-		{kPositionTag, &Types::Float3},
-		{kColorTag, &Types::Float4},
-		{kSizeTag, &Types::Float}
+		{Particles::Position, &Types::Float3},
+		{Particles::Color, &Types::Float4},
+		{Particles::Size, &Types::Float}
 	};
 
 	return desc;
@@ -101,9 +100,9 @@ bool SpriteRenderer::Initialize(const EmitterInstance& emitter)
 	m_Ready = false;
 
 	const Block& layout = emitter.Compiled().particles;
-	const Slot* pos = layout.Find(kPositionTag);
-	const Slot* col = layout.Find(kColorTag);
-	const Slot* siz = layout.Find(kSizeTag);
+	const Slot* pos = layout.Find(Particles::Position);
+	const Slot* col = layout.Find(Particles::Color);
+	const Slot* siz = layout.Find(Particles::Size);
 
 	if (!pos || !col || !siz)
 	{

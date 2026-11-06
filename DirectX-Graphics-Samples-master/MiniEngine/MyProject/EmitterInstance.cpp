@@ -3,10 +3,10 @@
 #include "EmitterCompiler.h"
 #include "ModuleContext.h"
 
+#include "TagLibrary.h"
+
 namespace
 {
-	const char* kSpawnCountTag = "Emitter.SpawnCount";
-
 	uint32_t HashFrame(uint32_t x)
 	{
 		x ^= x >> 16; x *= 0x7feb352dU;
@@ -87,7 +87,7 @@ void EmitterInstance::Tick(float deltaTime, const float3& ownerPosition)
 
 	// [2] Check SpawnCount
 	uint32_t* spawnCount = nullptr;
-	if (const Slot* slot = m_CompiledEmitter.emitterParams.Find(kSpawnCountTag))
+	if (const Slot* slot = m_CompiledEmitter.emitterParams.Find(Emitter::SpawnCount))
 	{
 		spawnCount = reinterpret_cast<uint32_t*>(m_EmitterData.data() + slot->offset);
 		*spawnCount = 0;
