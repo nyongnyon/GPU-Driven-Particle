@@ -12,6 +12,10 @@ ModuleDesc SpawnRate(float rate)
 
 	m.name = "Spawn Rate";
 	m.stage = Stage::EmitterUpdate;
+	m.params =
+	{
+		MakeParam<float>("Rate", rate)
+	};
 	m.reads = 
 	{ 
 		{Engine::DeltaTime, &Types::Float},
@@ -23,7 +27,12 @@ ModuleDesc SpawnRate(float rate)
 		{Emitter::SpawnCount, &Types::UInt32 },
 		{Emitter::SpawnRemainder, &Types::Float}
 	};
-
+	m.hlsl = R"(
+const float want = PARAM(rate) * DeltaTime * e.SpawnRemainder;
+const uint	n = (uint)want;
+e.SpawnRemainder = want - (float)n;
+e.SpawnCount += n;
+)";
 	m.execute = [rate](ModuleContext& ctx) 
 		{
 			float& remainder = ctx.Emitter<float>(Emitter::SpawnRemainder);
@@ -45,6 +54,12 @@ ModuleDesc InitializeParticle(float size, float lifeTime, float4 color)
 
 	m.name = "Initialize Particle";
 	m.stage = Stage::ParticleSpawn;
+	m.params =
+	{
+		MakeParam<float>("Size", size),
+		MakeParam<float>("Lifetime", lifeTime),
+		MakeParam<float4>("Color", color)
+	};
 	m.reads =
 	{
 		{Engine::OwnerPosition, &Types::Float3}
@@ -57,7 +72,13 @@ ModuleDesc InitializeParticle(float size, float lifeTime, float4 color)
 		{Particles::Lifetime, &Types::Float},
 		{Particles::Age, &Types::Float}
 	};
-
+	m.hlsl = R"(
+p.Position = OwnerPosition;
+p.Color = PARAM(Color);
+p.Size = PARAM(Size);
+p.Lifetime = PARAM(lifetime);
+p.Age = 0.f;
+)";
 
 	m.execute = [size, lifeTime, color](ModuleContext& ctx)
 		{
@@ -93,6 +114,11 @@ ModuleDesc ShapeLocation(float radius, bool surfaceOnly)
 	ModuleDesc m;
 	m.name = "Shape Location";
 	m.stage = Stage::ParticleSpawn;
+	m.params =
+	{
+		MakeParam<float>("Radius", radius),
+		MakeParam<uint32_t>("SurfaceOnly", surfaceOnly ? 1u : 0u)
+	};
 	m.reads =
 	{
 		{ Particles::Position, &Types::Float3 }
@@ -101,6 +127,16 @@ ModuleDesc ShapeLocation(float radius, bool surfaceOnly)
 	{
 		{Particles::Position, &Types::Float3}
 	};
+	m.hlsl = R"(
+const float kTwoPi = 6.28318530f;
+const float z = Random01(index, 0) * 2.f - 1.f;
+const float phi = Random01(index, 1) * kTwoPi;
+const float r = sqrt(max(0.f, 1.f - z * z));
+const float dist = (PARAM(SurfaceOnly) != 0) ? PARAM(Radius) : 
+		PARAM(Radius) * pow(Random01(index, 2), 1.f / 3.f);
+p.Position += float3(r * cos(phi) * dist, r * sin(phi) * dist, z * dist);
+
+)";
 
 	m.execute = [radius, surfaceOnly](ModuleContext& ctx)
 		{
@@ -131,6 +167,10 @@ ModuleDesc ParticleState(bool killOnLifeTime)
 	ModuleDesc m;
 	m.name = "Particle State";
 	m.stage = Stage::ParticleUpdate;
+	m.params =
+	{
+		MakeParam<uint32_t>("KillOnLifetime", killOnLifeTime ? 1u : 0u)
+	};
 	m.reads =
 	{
 		{Engine::DeltaTime, &Types::Float},
@@ -142,6 +182,13 @@ ModuleDesc ParticleState(bool killOnLifeTime)
 		{Particles::Age, &Types::Float},
 		{Particles::NormalizedAge, &Types::Float}
 	};
+	m.hlsl = R"(
+p.Age += DeltaTime;
+const float t = (p.Lifetime > 0.f) ? p.Age / p.Lifetime : 1.f;
+p.NormalizedAge = min(t, 1.f);
+if (PARAM(KillOnLifetime) != 0 && t >= 1.f)
+	KILL();
+)";
 
 	m.execute = [killOnLifeTime](ModuleContext& ctx)
 		{

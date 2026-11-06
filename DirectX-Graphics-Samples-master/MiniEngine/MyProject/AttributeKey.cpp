@@ -52,6 +52,7 @@ Storage AttributeKey::GetStorage() const
     case Namespace::Transient:
     case Namespace::Output:
     case Namespace::Local:     return Storage::Temporary;        // 단계 안에서만 쓰는 임시값
+    case Namespace::Module:    return Storage::ModuleParam;      // 모듈 안에서
     default:                   return Storage::Invalid;
     }
 }

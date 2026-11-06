@@ -52,9 +52,71 @@ namespace
     }
 }
 
+std::string ModuleScope(size_t moduleIndex, const std::string& moduleName)
+{
+    std::string scope = "M" + std::to_string(moduleIndex) + "_";
+    for (char ch : moduleName)
+    {
+        const bool ok = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_';
+        if (ok) scope += ch;
+    }
+    return scope;
+}
+
+namespace
+{
+    // 모듈 입력값을 상수 버퍼 배치표로 (모듈 순서, 선언 순서 그대로)
+    void CollectModuleParams(const std::vector<ModuleDesc>& modules, CompiledEmitter& out)
+    {
+        for (size_t mi = 0; mi < modules.size(); ++mi)
+        {
+            const ModuleDesc& m = modules[mi];
+            const std::string scope = ModuleScope(mi, m.name);
+            out.moduleScopes.push_back(scope);
+
+            CompiledModule cm;
+            cm.name = m.name;
+            cm.scope = scope;
+            cm.stage = m.stage;
+            cm.hlsl = m.hlsl;
+            cm.reads = m.reads;
+            cm.writes = m.writes;
+            for (const ParamDesc& p : m.params) cm.params.push_back(p.name);
+            out.modules.push_back(cm);
+
+            for (size_t pi = 0; pi < m.params.size(); ++pi)
+            {
+                const ParamDesc& p = m.params[pi];
+                const std::string who = m.name + " 입력값 '" + p.name + "'";
+
+                if (p.type == nullptr) { out.errors.push_back(who + ": 타입이 지정되지 않음"); continue; }
+                if (p.value.size() != p.type->size) { out.errors.push_back(who + ": 처음 값 크기(" + std::to_string(p.value.size()) + ")가 타입 크기와 다름"); continue; }
+
+                std::string why;
+                if (!Types::IsGpuCompatible(*p.type, &why)) { out.errors.push_back(who + ": GPU 상수 버퍼에 못 넣는 타입 (" + why + ")"); continue; }
+
+                bool dup = false;
+                for (size_t k = 0; k < pi; ++k) dup |= (m.params[k].name == p.name);
+                if (dup) { out.errors.push_back(who + ": 같은 모듈 안에 같은 이름이 또 있음"); continue; }
+
+                out.moduleParams.Add(AttributeKey::Parse("Module." + scope + "." + p.name), p.type);
+            }
+        }
+
+        // 처음 값 채우기 (상수 버퍼 크기 = 16 의 배수)
+        out.moduleParamData.assign(out.moduleParams.ConstantBufferSize(), 0);
+        for (size_t mi = 0; mi < modules.size(); ++mi)
+            for (const ParamDesc& p : modules[mi].params)
+                if (const Slot* s = out.moduleParams.Find("Module." + out.moduleScopes[mi] + "." + p.name))
+                    if (p.value.size() == s->type->size)
+                        std::memcpy(out.moduleParamData.data() + s->offset, p.value.data(), p.value.size());
+    }
+}
+
 CompiledEmitter EmitterCompiler::Compile() const
 {
     CompiledEmitter out;
+    CollectModuleParams(m_Modules, out);
     std::unordered_map<std::string, Entry> table;
     int nextOrder = 0;
 
@@ -152,6 +214,15 @@ CompiledEmitter EmitterCompiler::Compile() const
     for (const Entry* e : ordered)
     {
         const std::string full = e->key.Full();
+
+        // 생성기용: 선언된 속성 전부 기록 (Trim 여부와 상관없이)
+        {
+            const Storage st = e->key.GetStorage();
+            const bool trimmedHere = (st == Storage::ParticleBuffer) && m_Trim && !e->read;
+            DeclaredAttribute d{ e->key, e->type, !trimmedHere };
+            if (st == Storage::ParticleBuffer) out.declaredParticles.push_back(d);
+            if (st == Storage::EmitterStore)   out.declaredEmitter.push_back(d);
+        }
         switch (e->key.GetStorage())
         {
         case Storage::ParticleBuffer:
@@ -166,7 +237,7 @@ CompiledEmitter EmitterCompiler::Compile() const
             out.emitterParams.Add(e->key, e->type);
             break;
         case Storage::SystemStore:
-            out.systemParams.Add(e->key, e->type); 
+            out.systemParams.Add(e->key, e->type);
             break;
         case Storage::Temporary:
             if (e->read && !e->written)

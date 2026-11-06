@@ -34,6 +34,7 @@ std::string DescribeCompiled(const CompiledEmitter& c, const std::string& title)
     DescribeBlock(os, "파티클 1개", c.particles);
     DescribeBlock(os, "Emitter 저장소", c.emitterParams);
     DescribeBlock(os, "System 저장소", c.systemParams);
+    DescribeBlock(os, "모듈 입력값 (상수 버퍼)", c.moduleParams);
 
     for (const CopyOp& op : c.copyAtSpawnEnd)    DescribeCopy(os, "Spawn 끝", op);
     for (const CopyOp& op : c.copyAtUpdateStart) DescribeCopy(os, "Update 시작", op);

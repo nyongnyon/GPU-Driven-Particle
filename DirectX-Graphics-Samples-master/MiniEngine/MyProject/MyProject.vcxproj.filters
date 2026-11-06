@@ -39,6 +39,9 @@
     <Filter Include="Particle\Sorter">
       <UniqueIdentifier>{6a5fff65-3e1b-41fe-bb3a-47baa08da9fd}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Particle\Generator">
+      <UniqueIdentifier>{a4b9b30b-81a5-4103-9eba-36b3a99cccaf}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -101,6 +104,9 @@
     </ClCompile>
     <ClCompile Include="ParticleSorter.cpp">
       <Filter>Particle\Sorter</Filter>
+    </ClCompile>
+    <ClCompile Include="ShaderGenerator.cpp">
+      <Filter>Particle\Generator</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -171,6 +177,9 @@
     <ClInclude Include="TagLibrary.h">
       <Filter>Particle\Modules</Filter>
     </ClInclude>
+    <ClInclude Include="ShaderGenerator.h">
+      <Filter>Particle\Generator</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="Logo.png">
@@ -201,6 +210,9 @@
       <Filter>Shaders\Particle</Filter>
     </None>
     <None Include="Shaders\ParticleDrawCommon.hlsli">
+      <Filter>Shaders\Particle</Filter>
+    </None>
+    <None Include="Shaders\ModuleCommon.hlsli">
       <Filter>Shaders\Particle</Filter>
     </None>
   </ItemGroup>

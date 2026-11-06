@@ -2,6 +2,9 @@
 #include "ModuleDesc.h"
 #include "CompiledEmitter.h"
 
+std::string ModuleScope(size_t moduleIndex, const std::string& moduleName);
+
+
 class EmitterCompiler
 {
 public:
