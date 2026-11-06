@@ -156,8 +156,9 @@ void MyProject::InitializeEmitter()
     std::vector<ModuleDesc> modules =
     {
         SpawnRate(1000.f),
-        InitializeParticle(0.05f, 2.f, float4{ 1.f, 0.6f, 0.2f, 1.f }),   // size, lifeTime, color
+        InitializeParticle(0.05f, 10.f, float4{ 1.f, 0.6f, 0.2f, 1.f }),   // size, lifeTime, color
         ShapeLocation(1.f),
+        ParticleState(true)
     };
 
     m_ModuleReady = m_ModuleEmitter.Initialize(modules, { SpriteRenderer::Desc() }, 100'000);

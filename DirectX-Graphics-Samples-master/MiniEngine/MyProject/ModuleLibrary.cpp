@@ -52,7 +52,7 @@ ModuleDesc InitializeParticle(float size, float lifeTime, float4 color)
 	{
 		{"Particles.Position", &Types::Float3},
 		{"Particles.Color", &Types::Float4},
-		{"Particles.Size", &Types::Float}
+		{"Particles.Size", &Types::Float},
 	};
 
 
@@ -69,6 +69,7 @@ ModuleDesc InitializeParticle(float size, float lifeTime, float4 color)
 				pos[i] = origin;
 				col[i] = color;
 				sizes[i] = size;
+				
 			}
 		};
 
@@ -113,3 +114,54 @@ ModuleDesc ShapeLocation(float radius, bool surfaceOnly)
 
 	return m;
 }
+
+ModuleDesc ParticleState(bool killOnLifeTime)
+{
+	ModuleDesc m;
+	m.name = "Particle State";
+	m.stage = Stage::ParticleUpdate;
+	m.reads =
+	{
+		{"Engine.DeltaTime", &Types::Float},
+		{"Particles.Age", &Types::Float},
+		{"Particles.Lifetime", &Types::Float}
+	};
+	m.writes =
+	{
+		{"Particles.Age", &Types::Float},
+		{"Particles.NormalizedAge", &Types::Float}
+	};
+
+	m.execute = [killOnLifeTime](ModuleContext& ctx)
+		{
+			const float dt = ctx.DeltaTime();
+
+			auto age = ctx.Particles<float>("Particles.Age");
+			auto life = ctx.Particles<float>("Particles.Lifetime");
+
+			// NormalizedAge 는 읽는 모듈이 있을 때만 레이아웃에 자리가 있다 (없으면 Trim 됨)
+			// -> 자리가 없으면 계산을 건너뛴다
+			const bool hasNormalized = ctx.HasParticle("Particles.NormalizedAge");
+			StridedView<float> nage = {};
+			if (hasNormalized)
+				nage = ctx.Particles<float>("Particles.NormalizedAge");
+
+			for (uint32_t i = ctx.Begin(); i < ctx.End(); ++i)
+			{
+				age[i] += dt;
+
+				const float l = life[i];
+				const float t = (l > 0.f) ? age[i] / l : 1.f;   // 수명 0 이면 바로 끝난 것으로
+
+				if (hasNormalized)
+					nage[i] = (t < 1.f) ? t : 1.f;
+
+				if (killOnLifeTime && t >= 1.f)
+					ctx.Kill(i);
+			}
+		};
+
+	return m;
+}
+
+

@@ -19,7 +19,8 @@ ModuleContext::ModuleContext(const CompiledEmitter& compiled,
     const EngineValues& engine,
     uint32_t               capacity,
     uint32_t               begin,
-    uint32_t               end)
+    uint32_t               end,
+    uint8_t*                aliveFlags)
     : m_Compiled(compiled)
     , m_ParticleData(particleData)
     , m_EmitterData(emitterData)
@@ -27,6 +28,7 @@ ModuleContext::ModuleContext(const CompiledEmitter& compiled,
     , m_Capacity(capacity)
     , m_Begin(begin)
     , m_End(end)
+    , m_AliveFlags(aliveFlags)
 {
 }
 
@@ -34,6 +36,14 @@ float ModuleContext::Random01(uint32_t particleIndex, uint32_t salt) const
 {
     const uint32_t h = Hash(m_Engine.RandomSeed ^ Hash(particleIndex * 0x9E3779B9U + salt));
     return float(h >> 8) * (1.0f / 16777216.0f);   // 상위 24비트 -> [0, 1)
+}
+
+void ModuleContext::Kill(uint32_t i)
+{
+    assert(m_AliveFlags != nullptr && "Kill 은 Particle Update 단계에서만 쓸 수 있음");
+    assert(i >= m_Begin && i < m_End && "Kill: 처리 범위 밖의 파티클");
+
+    m_AliveFlags[i] = 0;
 }
 
 const Slot* ModuleContext::FindChecked(const Block& block, const std::string& fullName, const TypeInfo& expected)
