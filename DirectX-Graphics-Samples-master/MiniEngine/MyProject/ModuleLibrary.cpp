@@ -53,6 +53,8 @@ ModuleDesc InitializeParticle(float size, float lifeTime, float4 color)
 		{"Particles.Position", &Types::Float3},
 		{"Particles.Color", &Types::Float4},
 		{"Particles.Size", &Types::Float},
+		{"Particles.Lifetime", &Types::Float},
+		{"Particles.Age", &Types::Float}
 	};
 
 
@@ -63,13 +65,21 @@ ModuleDesc InitializeParticle(float size, float lifeTime, float4 color)
 			auto pos = ctx.Particles<float3>("Particles.Position");
 			auto col = ctx.Particles<float4>("Particles.Color");
 			auto sizes = ctx.Particles<float>("Particles.Size");
+		
+			const bool hasLife = ctx.HasParticle("Particles.Lifetime");
+			const bool hasAge = ctx.HasParticle("Particles.Age");
+			StridedView<float> life = {};
+			StridedView<float> age = {};
+			if (hasLife) life = ctx.Particles<float>("Particles.Lifetime");
+			if (hasAge)  age = ctx.Particles<float>("Particles.Age");
 
 			for (uint32_t i = ctx.Begin(); i < ctx.End(); ++i)
 			{
 				pos[i] = origin;
 				col[i] = color;
 				sizes[i] = size;
-				
+				if (hasLife) life[i] = lifeTime;
+				if (hasAge)  age[i] = 0.f;
 			}
 		};
 
